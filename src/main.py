@@ -8,6 +8,7 @@ from SamplePreprocessor import preprocess
 import os
 from os.path import join
 import matplotlib.pyplot as plt
+
 HOME = os.getenv('HOME')
 
 class FilePaths:
