@@ -15,7 +15,7 @@ class FilePaths:
   "filenames and paths to data"
   fnCharList = '../model/charList.txt'
   fnAccuracy = '../model/accuracy.txt'
-  fnTrain = join(HOME, 'datasets', 'iam_handwriting')
+  fnTrain = join(HOME, 'datasets', 'iam_handwriting/')
   fnInfer = join(HOME, 'datasets', 'htr_debug', 'trainbold.png')
   fnCorpus = '../data/corpus.txt'
 
