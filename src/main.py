@@ -19,7 +19,6 @@ class FilePaths:
   fnInfer = join(HOME, 'datasets', 'htr_debug', 'trainbold.png')
   fnCorpus = '../data/corpus.txt'
 
-
 def train(model, loader):
   "train NN"
   epoch = 0  # number of training epochs since start
