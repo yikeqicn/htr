@@ -2,7 +2,8 @@ import sys
 import argparse
 import cv2
 import editdistance
-from DataLoader import DataLoader, Batch
+# from DataLoader import DataLoader, Batch
+from DataLoaderMnistSeq import DataLoader, Batch
 from Model import Model, DecoderType
 from SamplePreprocessor import preprocess
 import os
