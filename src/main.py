@@ -30,7 +30,7 @@ class FilePaths:
   fnCharList = join(ckptpath, 'charList.txt')
   fnCorpus = join(ckptpath, 'corpus.txt')
   fnAccuracy = join(ckptpath, 'accuracy.txt')
-  fnTrain = '/data/home/jdegange/vision/digitsdataset'
+  fnTrain = '/data/home/jdegange/vision/digitsdataset/'
   fnInfer = join(HOME, 'datasets', 'htr_debug', 'trainbold.png')
 
 def train(model, loader):
