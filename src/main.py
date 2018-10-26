@@ -20,14 +20,13 @@ parser.add_argument("--wordbeamsearch", help="use word beam search instead of be
 parser.add_argument("--name", default='debug', type=str, help="name of the log")
 args = parser.parse_args()
 
-
+HOME = os.getenv('HOME')
+ckptroot = join(HOME, 'ckpt')
+ckptpath = join(ckptroot, args.name)
+os.makedirs(ckptpath, exist_ok=True)
 
 class FilePaths:
   "filenames and paths to data"
-  HOME = os.getenv('HOME')
-  ckptroot = join(HOME, 'ckpt')
-  ckptpath = join(ckptroot, args.name)
-
   fnCharList = join(ckptpath, 'charList.txt')
   fnCorpus = join(ckptpath, 'corpus.txt')
   fnAccuracy = join(ckptpath, 'accuracy.txt')
