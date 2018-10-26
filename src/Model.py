@@ -1,5 +1,6 @@
 import sys
 import tensorflow as tf
+from os.path import join
 
 
 class DecoderType:
@@ -16,12 +17,13 @@ class Model:
   imgSize = (128, 32)
   maxTextLen = 32
 
-  def __init__(self, charList, decoderType=DecoderType.BestPath, mustRestore=False):
+  def __init__(self, charList, decoderType=DecoderType.BestPath, mustRestore=False, FilePaths=None):
     "init model: add CNN, RNN and CTC and initialize TF"
     self.charList = charList
     self.decoderType = decoderType
     self.mustRestore = mustRestore
     self.snapID = 0
+    self.FilePaths = FilePaths
 
     # CNN
     self.inputImgs = tf.placeholder(tf.float32, shape=(Model.batchSize, Model.imgSize[0], Model.imgSize[1]))
@@ -110,7 +112,7 @@ class Model:
       # prepare information about language (dictionary, characters in dataset, characters forming words)
       chars = str().join(self.charList)
       wordChars = open('../model/wordCharList.txt').read().splitlines()[0]
-      corpus = open('../data/corpus.txt').read()
+      corpus = open(self.FilePaths.fnCorpus).read()
 
       # decode using the "Words" mode of word beam search
       decoder = word_beam_search_module.word_beam_search(tf.nn.softmax(ctcIn3dTBC, dim=2), 50, 'Words', 0.0,
@@ -125,10 +127,10 @@ class Model:
     print('Python: ' + sys.version)
     print('Tensorflow: ' + tf.__version__)
 
-    sess = tf.Session()  # TF session
+    sess = tf.Session(gpu_options=tf.GPUOptions(allow_growth=True))  # TF session
 
     saver = tf.train.Saver(max_to_keep=1)  # saver saves model to file
-    modelDir = '../model/'
+    modelDir = self.FilePaths.fnCkptpath
     latestSnapshot = tf.train.latest_checkpoint(modelDir)  # is there a saved model?
 
     # if model must be restored (for inference), there must be a snapshot
@@ -215,4 +217,4 @@ class Model:
   def save(self):
     "save model to file"
     self.snapID += 1
-    self.saver.save(self.sess, '../model/snapshot', global_step=self.snapID)
+    self.saver.save(self.sess, join(self.FilePaths.fnCkptpath, 'model'), global_step=self.snapID)

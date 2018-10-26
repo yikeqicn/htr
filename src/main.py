@@ -1,3 +1,7 @@
+from comet_ml import Experiment
+experiment = Experiment(api_key="vPCPPZrcrUBitgoQkvzxdsh9k", parse_args=False,
+                        project_name='debug', workspace="htr")
+
 import sys
 import argparse
 import cv2
@@ -9,7 +13,6 @@ from SamplePreprocessor import preprocess
 import os
 from os.path import join
 import matplotlib.pyplot as plt
-
 
 # optional command line args
 parser = argparse.ArgumentParser()
@@ -27,6 +30,8 @@ os.makedirs(ckptpath, exist_ok=True)
 
 class FilePaths:
   "filenames and paths to data"
+
+  fnCkptpath = ckptpath
   fnCharList = join(ckptpath, 'charList.txt')
   fnCorpus = join(ckptpath, 'corpus.txt')
   fnAccuracy = join(ckptpath, 'accuracy.txt')
@@ -50,7 +55,9 @@ def train(model, loader):
       iterInfo = loader.getIteratorInfo()
       batch = loader.getNext()
       loss = model.trainBatch(batch)
-      print('Batch:', iterInfo[0], '/', iterInfo[1], 'Loss:', loss)
+      # print('Batch:', iterInfo[0], '/', iterInfo[1], 'Loss:', loss)
+      step = iterInfo[0]+(epoch-1)*iterInfo[1]
+      experiment.log_metric('train/loss', loss, step)
 
     # validate
     charErrorRate = validate(model, loader)
@@ -73,7 +80,7 @@ def train(model, loader):
       break
 
 
-def validate(model, loader):
+def validate(model, loader, step):
   "validate NN"
   print('Validate NN')
   loader.validationSet()
@@ -100,6 +107,8 @@ def validate(model, loader):
   charErrorRate = numCharErr / numCharTotal
   wordAccuracy = numWordOK / numWordTotal
   print('Character error rate: %f%%. Word accuracy: %f%%.' % (charErrorRate * 100.0, wordAccuracy * 100.0))
+  experiment.log_metric('valid/cer', charErrorRate, step)
+  experiment.log_metric('valid/wer', 1-wordAccuracy, step)
   return charErrorRate
 
 
@@ -133,16 +142,16 @@ def main():
 
     # execute training or validation
     if args.train:
-      model = Model(loader.charList, decoderType)
+      model = Model(loader.charList, decoderType, FilePaths=FilePaths)
       train(model, loader)
     elif args.validate:
-      model = Model(loader.charList, decoderType, mustRestore=True)
+      model = Model(loader.charList, decoderType, mustRestore=True, FilePaths=FilePaths)
       validate(model, loader)
 
   # infer text on test image
   else:
     print(open(FilePaths.fnAccuracy).read())
-    model = Model(open(FilePaths.fnCharList).read(), decoderType, mustRestore=True)
+    model = Model(open(FilePaths.fnCharList).read(), decoderType, mustRestore=True, FilePaths=FilePaths)
     infer(model, FilePaths.fnInfer)
 
 

@@ -4,7 +4,7 @@ import cv2
 from SamplePreprocessor import preprocess
 from glob import glob
 from os.path import join
-
+import os
 
 class Sample:
   "sample from the dataset"
@@ -60,8 +60,8 @@ class DataLoader:
 
     # MODIFIED HERE FOR OUR CUSTOM DATASET
     fileName = glob(join(filePath, '*.jpg'))
-    gtText = [os.path.basename(f) for f in fileName]
-    chars = union(set(gtText))
+    gtText = [os.path.basename(f)[:-4] for f in fileName]
+    chars = set.union(*[set(t) for t in gtText])
     self.samples = [Sample(g,f) for g,f in zip(gtText, fileName)]
 
     # split into training and validation set: 95% - 5%
