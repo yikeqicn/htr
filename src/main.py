@@ -10,15 +10,29 @@ import os
 from os.path import join
 import matplotlib.pyplot as plt
 
-HOME = os.getenv('HOME')
+
+# optional command line args
+parser = argparse.ArgumentParser()
+parser.add_argument("--train", help="train the NN", action="store_true")
+parser.add_argument("--validate", help="validate the NN", action="store_true")
+parser.add_argument("--beamsearch", help="use beam search instead of best path decoding", action="store_true")
+parser.add_argument("--wordbeamsearch", help="use word beam search instead of best path decoding", action="store_true")
+parser.add_argument("--name", default='debug', type=str, help="name of the log")
+args = parser.parse_args()
+
+
 
 class FilePaths:
   "filenames and paths to data"
-  fnCharList = '../model/charList.txt'
-  fnAccuracy = '../model/accuracy.txt'
-  fnTrain = join(HOME, 'datasets', 'iam_handwriting/')
+  HOME = os.getenv('HOME')
+  ckptroot = join(HOME, 'ckpt')
+  ckptpath = join(ckptroot, args.name)
+
+  fnCharList = join(ckptpath, 'charList.txt')
+  fnCorpus = join(ckptpath, 'corpus.txt')
+  fnAccuracy = join(ckptpath, 'accuracy.txt')
+  fnTrain = '/data/home/jdegange/vision/digitsdataset'
   fnInfer = join(HOME, 'datasets', 'htr_debug', 'trainbold.png')
-  fnCorpus = '../data/corpus.txt'
 
 def train(model, loader):
   "train NN"
@@ -100,13 +114,6 @@ def infer(model, fnImg):
 
 def main():
   "main function"
-  # optional command line args
-  parser = argparse.ArgumentParser()
-  parser.add_argument("--train", help="train the NN", action="store_true")
-  parser.add_argument("--validate", help="validate the NN", action="store_true")
-  parser.add_argument("--beamsearch", help="use beam search instead of best path decoding", action="store_true")
-  parser.add_argument("--wordbeamsearch", help="use word beam search instead of best path decoding", action="store_true")
-  args = parser.parse_args()
 
   decoderType = DecoderType.BestPath
   if args.beamsearch:
