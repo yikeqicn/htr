@@ -1,11 +1,12 @@
 from comet_ml import Experiment
 experiment = Experiment(api_key="vPCPPZrcrUBitgoQkvzxdsh9k", parse_args=False,
-                        project_name='debug', workspace="htr")
+                        project_name='htr-debug')
 
 import sys
 import argparse
 import cv2
 import editdistance
+import numpy as np
 # from DataLoader import DataLoader, Batch
 from DataLoaderMnistSeq import DataLoader, Batch
 from Model import Model, DecoderType
@@ -21,7 +22,12 @@ parser.add_argument("--validate", help="validate the NN", action="store_true")
 parser.add_argument("--beamsearch", help="use beam search instead of best path decoding", action="store_true")
 parser.add_argument("--wordbeamsearch", help="use word beam search instead of best path decoding", action="store_true")
 parser.add_argument("--name", default='debug', type=str, help="name of the log")
+parser.add_argument("--gpu", default=0, type=str, help="gpu numbers")
+parser.add_argument("--batchsize", default=50, type=int, help='batch size')
 args = parser.parse_args()
+experiment.set_name(args.name)
+experiment.log_multiple_params(vars(args))
+os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 HOME = os.getenv('HOME')
 ckptroot = join(HOME, 'ckpt')
@@ -35,7 +41,7 @@ class FilePaths:
   fnCharList = join(ckptpath, 'charList.txt')
   fnCorpus = join(ckptpath, 'corpus.txt')
   fnAccuracy = join(ckptpath, 'accuracy.txt')
-  fnTrain = '/data/home/jdegange/vision/digitsdataset/'
+  fnTrain = '/data/home/jdegange/vision/digitsdataset2/'
   fnInfer = join(HOME, 'datasets', 'htr_debug', 'trainbold.png')
 
 def train(model, loader):
@@ -46,21 +52,21 @@ def train(model, loader):
   earlyStopping = 5  # stop training after this number of epochs without improvement
   while True:
     epoch += 1
-    print('Epoch:', epoch)
+    print('Epoch:', epoch, ' Training...')
 
     # train
-    print('Train NN')
     loader.trainSet()
     while loader.hasNext():
       iterInfo = loader.getIteratorInfo()
       batch = loader.getNext()
       loss = model.trainBatch(batch)
-      # print('Batch:', iterInfo[0], '/', iterInfo[1], 'Loss:', loss)
+      acc = model
+      if np.mod(iterInfo[0],200)==0: print('TRAIN: Batch:', iterInfo[0], '/', iterInfo[1], 'Loss:', loss)
       step = iterInfo[0]+(epoch-1)*iterInfo[1]
       experiment.log_metric('train/loss', loss, step)
 
     # validate
-    charErrorRate = validate(model, loader)
+    charErrorRate = validate(model, loader, step)
 
     # if best validation accuracy so far, save model parameters
     if charErrorRate < bestCharErrorRate:
@@ -90,7 +96,7 @@ def validate(model, loader, step):
   numWordTotal = 0
   while loader.hasNext():
     iterInfo = loader.getIteratorInfo()
-    print('Batch:', iterInfo[0], '/', iterInfo[1])
+    print('EVAL: Batch:', iterInfo[0], '/', iterInfo[1])
     batch = loader.getNext()
     recognized = model.inferBatch(batch)
 
@@ -101,7 +107,7 @@ def validate(model, loader, step):
       dist = editdistance.eval(recognized[i], batch.gtTexts[i])
       numCharErr += dist
       numCharTotal += len(batch.gtTexts[i])
-      print('[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + batch.gtTexts[i] + '"', '->', '"' + recognized[i] + '"')
+      # print('[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + batch.gtTexts[i] + '"', '->', '"' + recognized[i] + '"')
 
   # print validation result
   charErrorRate = numCharErr / numCharTotal
@@ -115,7 +121,7 @@ def validate(model, loader, step):
 def infer(model, fnImg):
   "recognize text in image provided by file path"
   img = preprocess(cv2.imread(fnImg, cv2.IMREAD_GRAYSCALE), Model.imgSize)
-  batch = Batch(None, [img] * Model.batchSize)  # fill all batch elements with same input image
+  batch = Batch(None, [img] * args.batchsize)  # fill all batch elements with same input image
   recognized = model.inferBatch(batch)  # recognize text
   print('Recognized:', '"' + recognized[0] + '"')  # all batch elements hold same result
 
@@ -132,7 +138,7 @@ def main():
   # train or validate on IAM dataset
   if args.train or args.validate:
     # load training data, create TF model
-    loader = DataLoader(FilePaths.fnTrain, Model.batchSize, Model.imgSize, Model.maxTextLen)
+    loader = DataLoader(FilePaths.fnTrain, args.batchsize, Model.imgSize, Model.maxTextLen)
 
     # save characters of model for inference mode
     open(FilePaths.fnCharList, 'w').write(str().join(loader.charList))
@@ -142,16 +148,16 @@ def main():
 
     # execute training or validation
     if args.train:
-      model = Model(loader.charList, decoderType, FilePaths=FilePaths)
+      model = Model(args, loader.charList, decoderType, FilePaths=FilePaths)
       train(model, loader)
     elif args.validate:
-      model = Model(loader.charList, decoderType, mustRestore=True, FilePaths=FilePaths)
+      model = Model(args, loader.charList, decoderType, mustRestore=True, FilePaths=FilePaths)
       validate(model, loader)
 
   # infer text on test image
   else:
     print(open(FilePaths.fnAccuracy).read())
-    model = Model(open(FilePaths.fnCharList).read(), decoderType, mustRestore=True, FilePaths=FilePaths)
+    model = Model(args, open(FilePaths.fnCharList).read(), decoderType, mustRestore=True, FilePaths=FilePaths)
     infer(model, FilePaths.fnInfer)
 
 

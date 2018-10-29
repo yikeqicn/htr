@@ -17,16 +17,17 @@ class Model:
   imgSize = (128, 32)
   maxTextLen = 32
 
-  def __init__(self, charList, decoderType=DecoderType.BestPath, mustRestore=False, FilePaths=None):
+  def __init__(self, args, charList, decoderType=DecoderType.BestPath, mustRestore=False, FilePaths=None):
     "init model: add CNN, RNN and CTC and initialize TF"
     self.charList = charList
     self.decoderType = decoderType
     self.mustRestore = mustRestore
     self.snapID = 0
     self.FilePaths = FilePaths
+    self.batchsize = args.batchsize
 
     # CNN
-    self.inputImgs = tf.placeholder(tf.float32, shape=(Model.batchSize, Model.imgSize[0], Model.imgSize[1]))
+    self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, Model.imgSize[0], Model.imgSize[1]))
     cnnOut4d = self.setupCNN(self.inputImgs)
 
     # RNN
@@ -127,7 +128,8 @@ class Model:
     print('Python: ' + sys.version)
     print('Tensorflow: ' + tf.__version__)
 
-    sess = tf.Session(gpu_options=tf.GPUOptions(allow_growth=True))  # TF session
+    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))
+
 
     saver = tf.train.Saver(max_to_keep=1)  # saver saves model to file
     modelDir = self.FilePaths.fnCkptpath
@@ -171,12 +173,12 @@ class Model:
     "extract texts from output of CTC decoder"
 
     # contains string of labels for each batch element
-    encodedLabelStrs = [[] for i in range(Model.batchSize)]
+    encodedLabelStrs = [[] for i in range(self.batchsize)]
 
     # word beam search: label strings terminated by blank
     if self.decoderType == DecoderType.WordBeamSearch:
       blank = len(self.charList)
-      for b in range(Model.batchSize):
+      for b in range(self.batchsize):
         for label in ctcOutput[b]:
           if label == blank:
             break
@@ -188,7 +190,7 @@ class Model:
       decoded = ctcOutput[0][0]
 
       # go over all indices and save mapping: batch -> values
-      idxDict = {b: [] for b in range(Model.batchSize)}
+      idxDict = {b: [] for b in range(self.batchsize)}
       for (idx, idx2d) in enumerate(decoded.indices):
         label = decoded.values[idx]
         batchElement = idx2d[0]  # index according to [b,t]
@@ -202,8 +204,9 @@ class Model:
     sparse = self.toSparse(batch.gtTexts)
     rate = 0.01 if self.batchesTrained < 10 else (
       0.001 if self.batchesTrained < 10000 else 0.0001)  # decay learning rate
-    (_, lossVal) = self.sess.run([self.optimizer, self.loss], {self.inputImgs: batch.imgs, self.gtTexts: sparse,
-                                                               self.seqLen: [Model.maxTextLen] * Model.batchSize,
+    (_, lossVal) = self.sess.run([self.optimizer, self.loss], {self.inputImgs: batch.imgs,
+                                                               self.gtTexts: sparse,
+                                                               self.seqLen: [Model.maxTextLen] * self.batchsize,
                                                                self.learningRate: rate})
     self.batchesTrained += 1
     return lossVal
@@ -211,7 +214,7 @@ class Model:
   def inferBatch(self, batch):
     "feed a batch into the NN to recngnize the texts"
     decoded = self.sess.run(self.decoder,
-                            {self.inputImgs: batch.imgs, self.seqLen: [Model.maxTextLen] * Model.batchSize})
+                            {self.inputImgs: batch.imgs, self.seqLen: [Model.maxTextLen] * self.batchsize})
     return self.decoderOutputToText(decoded)
 
   def save(self):

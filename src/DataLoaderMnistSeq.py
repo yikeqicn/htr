@@ -65,9 +65,12 @@ class DataLoader:
     self.samples = [Sample(g,f) for g,f in zip(gtText, fileName)]
 
     # split into training and validation set: 95% - 5%
+    random.shuffle(self.samples)
     splitIdx = int(0.95 * len(self.samples))
     self.trainSamples = self.samples[:splitIdx]
     self.validationSamples = self.samples[splitIdx:]
+    print("Number of train/valid samples: ", len(self.trainSamples), ",", len(self.validationSamples))
+    print('Batch size: '+str(self.batchSize))
 
     # put words into lists
     self.trainWords = [x.gtText for x in self.trainSamples]
