@@ -9,7 +9,7 @@ import editdistance
 import numpy as np
 from DataLoader import DataLoader, Batch
 # from DataLoaderMnistSeq import DataLoader, Batch
-from Model import Model, DecoderType
+from Model import Model
 from SamplePreprocessor import preprocess
 import os
 from os.path import join, basename, dirname
@@ -21,12 +21,11 @@ import utils
 parser = argparse.ArgumentParser()
 parser.add_argument("--train", help="train the NN", action="store_true")
 parser.add_argument("--validate", help="validate the NN", action="store_true")
-parser.add_argument("--beamsearch", help="use beam search instead of best path decoding", action="store_true")
-parser.add_argument("--wordbeamsearch", help="use word beam search instead of best path decoding", action="store_true")
+parser.add_argument("--decoder", default='bestpath', type=str, help="bestpath, beamsearch, wordbeamsearch")
 parser.add_argument("--name", default='debug', type=str, help="name of the log")
 parser.add_argument("--gpu", default='0', type=str, help="gpu numbers")
 parser.add_argument("--batchsize", default=50, type=int, help='batch size')
-parser.add_argument("--custom", help="custom augmentation", action="store_true")
+parser.add_argument("--noncustom", help="non-custom data augmentation", action="store_true")
 parser.add_argument("--dataset", default='iam', type=str, help='[iam, mnistseq]')
 args = parser.parse_args()
 experiment.set_name(args.name)
@@ -42,7 +41,6 @@ os.makedirs(ckptpath, exist_ok=True)
 # chublet
 class FilePaths:
   "filenames and paths to data"
-
   fnCkptpath = ckptpath
   fnCharList = join(ckptpath, 'charList.txt')
   fnCorpus = join(ckptpath, 'corpus.txt')
@@ -139,12 +137,6 @@ def infer(model, fnImg):
 def main():
   "main function"
 
-  decoderType = DecoderType.BestPath
-  if args.beamsearch:
-    decoderType = DecoderType.BeamSearch
-  elif args.wordbeamsearch:
-    decoderType = DecoderType.WordBeamSearch
-
   # train or validate on IAM dataset
   if args.train or args.validate:
     # load training data, create TF model
@@ -158,16 +150,16 @@ def main():
 
     # execute training or validation
     if args.train:
-      model = Model(args, loader.charList, decoderType, FilePaths=FilePaths)
+      model = Model(args, loader.charList, FilePaths=FilePaths)
       train(model, loader)
     elif args.validate:
-      model = Model(args, loader.charList, decoderType, mustRestore=True, FilePaths=FilePaths)
+      model = Model(args, loader.charList, mustRestore=True, FilePaths=FilePaths)
       validate(model, loader)
 
   # infer text on test image
   else:
     print(open(FilePaths.fnAccuracy).read())
-    model = Model(args, open(FilePaths.fnCharList).read(), decoderType, mustRestore=True, FilePaths=FilePaths)
+    model = Model(args, open(FilePaths.fnCharList).read(), mustRestore=True, FilePaths=FilePaths)
     infer(model, FilePaths.fnInfer)
 
 

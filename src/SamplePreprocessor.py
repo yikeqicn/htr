@@ -53,7 +53,7 @@ def preprocess(img, imgSize, args, dataAugmentation=False):
     img = np.zeros([imgSize[1], imgSize[0]])
 
   # increase dataset size by applying random stretches to the images
-  if not args.custom:
+  if args.noncustom:
 
     if dataAugmentation:
       stretch = (random.random() - 0.5)  # -0.5 .. +0.5
@@ -72,13 +72,13 @@ def preprocess(img, imgSize, args, dataAugmentation=False):
     target = np.ones([ht, wt]) * 255
     target[0:newSize[1], 0:newSize[0]] = img
 
-  if args.custom:
+  else:
 
-    if dataAugmentation:
+    if True: # dataAugmentation
     # ADDED by ronny
-      img = horizontal_stretch(img, minFactor=.7, maxFactor=1.5)
+      img = horizontal_stretch(img, minFactor=.5, maxFactor=1.5)
       img = target_aspect_pad(img, targetRatio=imgSize[1]/imgSize[0])
-      img = keep_aspect_pad(img, maxFactor=1.5)
+      img = keep_aspect_pad(img, maxFactor=1.3)
 
     target = cv2.resize(img, imgSize, interpolation=cv2.INTER_CUBIC)
 

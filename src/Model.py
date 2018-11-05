@@ -2,32 +2,27 @@ import sys
 import tensorflow as tf
 from os.path import join
 
-
-class DecoderType:
-  BestPath = 0
-  BeamSearch = 1
-  WordBeamSearch = 2
-
-
 class Model:
   "minimalistic TF model for HTR"
 
   # model constants
-  batchSize = 50
-  imgSize = (128, 32)
+  # batchSize = 50
+  imgSize = (256, 64)
   maxTextLen = 32
 
-  def __init__(self, args, charList, decoderType=DecoderType.BestPath, mustRestore=False, FilePaths=None):
+  def __init__(self, args, charList, mustRestore=False, FilePaths=None):
     "init model: add CNN, RNN and CTC and initialize TF"
     self.charList = charList
-    self.decoderType = decoderType
+    self.decoderType = args.decoder
     self.mustRestore = mustRestore
     self.snapID = 0
     self.FilePaths = FilePaths
     self.batchsize = args.batchsize
 
-    # CNN
+    # Input
     self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, Model.imgSize[0], Model.imgSize[1]))
+
+    # CNN
     cnnOut4d = self.setupCNN(self.inputImgs)
 
     # RNN
@@ -66,6 +61,28 @@ class Model:
 
     return pool
 
+  # def setupCNN(self, cnnIn3d):
+  #   "create CNN layers and return output of these layers"
+  #   cnnIn4d = tf.expand_dims(input=cnnIn3d, axis=3)
+  #
+  #   # list of parameters for the layers
+  #   kernelVals = [7, 5, 5, 3, 3, 3]
+  #   featureVals = [1, 32, 64, 128, 128, 256, 256]
+  #   strideVals = poolVals = [(2, 2), (2, 2), (2, 2), (1, 2), (1, 2), (1,2)]
+  #   numLayers = len(strideVals)
+  #
+  #   # create layers
+  #   pool = cnnIn4d  # input to first CNN layer
+  #   for i in range(numLayers):
+  #     kernel = tf.Variable(
+  #       tf.truncated_normal([kernelVals[i], kernelVals[i], featureVals[i], featureVals[i + 1]], stddev=0.1))
+  #     conv = tf.nn.conv2d(pool, kernel, padding='SAME', strides=(1, 1, 1, 1))
+  #     relu = tf.nn.relu(conv)
+  #     pool = tf.nn.max_pool(relu, (1, poolVals[i][0], poolVals[i][1], 1), (1, strideVals[i][0], strideVals[i][1], 1),
+  #                           'VALID')
+  #
+  #   return pool
+
   def setupRNN(self, rnnIn4d):
     "create RNN layers and return output of these layers"
     rnnIn3d = tf.squeeze(rnnIn4d, axis=[2])
@@ -100,13 +117,14 @@ class Model:
     # calc loss for batch
     self.seqLen = tf.placeholder(tf.int32, [None])
     loss = tf.nn.ctc_loss(labels=self.gtTexts, inputs=ctcIn3dTBC, sequence_length=self.seqLen, ctc_merge_repeated=True)
+
     # decoder: either best path decoding or beam search decoding
-    if self.decoderType == DecoderType.BestPath:
+    if self.decoderType == 'bestpath':
       decoder = tf.nn.ctc_greedy_decoder(inputs=ctcIn3dTBC, sequence_length=self.seqLen)
-    elif self.decoderType == DecoderType.BeamSearch:
+    elif self.decoderType == 'beamsearch':
       decoder = tf.nn.ctc_beam_search_decoder(inputs=ctcIn3dTBC, sequence_length=self.seqLen, beam_width=50,
                                               merge_repeated=False)
-    elif self.decoderType == DecoderType.WordBeamSearch:
+    elif self.decoderType == 'wordbeamsearch':
       # import compiled word beam search operation (see https://github.com/githubharald/CTCWordBeamSearch)
       word_beam_search_module = tf.load_op_library('TFWordBeamSearch.so')
 
@@ -176,7 +194,7 @@ class Model:
     encodedLabelStrs = [[] for i in range(self.batchsize)]
 
     # word beam search: label strings terminated by blank
-    if self.decoderType == DecoderType.WordBeamSearch:
+    if self.decoderType == 'wordbeamsearch':
       blank = len(self.charList)
       for b in range(self.batchsize):
         for label in ctcOutput[b]:
