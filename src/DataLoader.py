@@ -8,19 +8,15 @@ import os
 
 class Sample:
   "sample from the dataset"
-
   def __init__(self, gtText, filePath):
     self.gtText = gtText
     self.filePath = filePath
 
-
 class Batch:
   "batch containing images and ground truth texts"
-
   def __init__(self, gtTexts, imgs):
     self.imgs = np.stack(imgs, axis=0)
     self.gtTexts = gtTexts
-
 
 class DataLoader:
   "loads data which corresponds to IAM format, see: http://www.fki.inf.unibe.ch/databases/iam-handwriting-database"
