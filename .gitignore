@@ -6,3 +6,4 @@ model/snapshot-*
 *.iml
 */*.iml
 .idea/
+.DS_Store
