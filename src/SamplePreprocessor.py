@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 from matplotlib.pyplot import plot, imshow, colorbar, show, axis
 from numpy.random import randint
+import os
 
 
 def horizontal_stretch(img, minFactor, maxFactor):

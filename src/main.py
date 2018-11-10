@@ -34,10 +34,11 @@ experiment.set_name(args.name)
 experiment.log_multiple_params(vars(args))
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-HOME = os.getenv('HOME')
-ckptroot = join(HOME, 'ckpt')
+home = os.environ['HOME']
+reporoot = join(home, 'repo')
+ckptroot = join(home, 'ckpt')
 ckptpath = join(ckptroot, args.name)
-if args.name=='debug': shutil.rmtree(ckptpath)
+if args.name=='debug': shutil.rmtree(ckptpath, ignore_errors=True)
 os.makedirs(ckptpath, exist_ok=True)
 
 # chublet
@@ -49,8 +50,8 @@ class FilePaths:
   fnCorpus = join(ckptpath, 'corpus.txt')
   fnAccuracy = join(ckptpath, 'accuracy.txt')
   if args.dataset=='mnistseq': fnTrain = '/data/home/jdegange/vision/digitsdataset2/'
-  if args.dataset=='iam': fnTrain = join(HOME, 'datasets/iam_handwriting/')
-  fnInfer = join(HOME, 'datasets', 'htr_debug', 'trainbold.png')
+  if args.dataset=='iam': fnTrain = join(home, 'datasets/iam_handwriting/')
+  fnInfer = join(home, 'datasets', 'htr_debug', 'trainbold.png')
 
 def train(model, loader):
   "train NN"
@@ -123,7 +124,7 @@ def validate(model, loader, epoch):
         counter += 1
 
   # print validation result
-  charErrorRate = numCharErr / numCharTotal
+  charErrorRate = numCharErr / numCharTotalthe poisoning schemeof
   wordAccuracy = numWordOK / numWordTotal
   print('VALID: Character error rate: %f%%. Word accuracy: %f%%.' % (charErrorRate * 100.0, wordAccuracy * 100.0))
   return charErrorRate, wordAccuracy
@@ -167,8 +168,13 @@ def main():
 
   # infer text on test image
   else:
+<<<<<<< Updated upstream
     print(open(FilePaths.fnAccuracy).read())
     model = Model(args, open(FilePaths.fnCharList).read(), decoderType, mustRestore=True, FilePaths=FilePaths)
+=======
+    print(FilePaths.fnCkptpath)
+    model = Model(args, open(FilePaths.fnCharList).read(), mustRestore=True, FilePaths=FilePaths)
+>>>>>>> Stashed changes
     infer(model, FilePaths.fnInfer)
 
 

@@ -1,5 +1,10 @@
 import os
 from os.path import join, basename, dirname
+<<<<<<< Updated upstream
+=======
+import matplotlib
+matplotlib.use('TkAgg')
+>>>>>>> Stashed changes
 import matplotlib.pyplot as plt
 
 def log_image(experiment, batch, text, savetag, ckptpath, counter, epoch):
