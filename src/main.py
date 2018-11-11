@@ -1,7 +1,7 @@
 
 from comet_ml import Experiment
 experiment = Experiment(api_key="vPCPPZrcrUBitgoQkvzxdsh9k", parse_args=False,
-                        project_name='htr-debug')
+                        project_name='htr-restart')
 
 import sys
 import argparse
@@ -124,7 +124,7 @@ def validate(model, loader, epoch):
         counter += 1
 
   # print validation result
-  charErrorRate = numCharErr / numCharTotalthe poisoning schemeof
+  charErrorRate = numCharErr / numCharTotal
   wordAccuracy = numWordOK / numWordTotal
   print('VALID: Character error rate: %f%%. Word accuracy: %f%%.' % (charErrorRate * 100.0, wordAccuracy * 100.0))
   return charErrorRate, wordAccuracy
@@ -168,13 +168,10 @@ def main():
 
   # infer text on test image
   else:
-<<<<<<< Updated upstream
     print(open(FilePaths.fnAccuracy).read())
     model = Model(args, open(FilePaths.fnCharList).read(), decoderType, mustRestore=True, FilePaths=FilePaths)
-=======
     print(FilePaths.fnCkptpath)
     model = Model(args, open(FilePaths.fnCharList).read(), mustRestore=True, FilePaths=FilePaths)
->>>>>>> Stashed changes
     infer(model, FilePaths.fnInfer)
 
 
