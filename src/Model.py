@@ -2,12 +2,10 @@ import sys
 import tensorflow as tf
 from os.path import join
 
-
 class DecoderType:
   BestPath = 0
   BeamSearch = 1
   WordBeamSearch = 2
-
 
 class Model:
   "minimalistic TF model for HTR"

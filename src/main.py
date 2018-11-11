@@ -1,7 +1,7 @@
 
 from comet_ml import Experiment
 experiment = Experiment(api_key="vPCPPZrcrUBitgoQkvzxdsh9k", parse_args=False,
-                        project_name='htr-restart')
+                        project_name='htr-restart3')
 
 import sys
 import argparse
@@ -70,9 +70,10 @@ def train(model, loader):
       iterInfo = loader.getIteratorInfo()
       batch = loader.getNext()
       loss = model.trainBatch(batch)
-      if np.mod(iterInfo[0],200)==0: print('TRAIN: Batch:', iterInfo[0], '/', iterInfo[1], 'Loss:', loss)
-      step = iterInfo[0]+(epoch-1)*iterInfo[1]
-      experiment.log_metric('train/loss', loss, step)
+      if np.mod(iterInfo[0],200)==0:
+        print('TRAIN: Batch:', iterInfo[0], '/', iterInfo[1], 'Loss:', loss)
+        step = iterInfo[0]+(epoch-1)*iterInfo[1]
+        experiment.log_metric('train/loss', loss, step)
       if counter<5: # log images
         text = batch.gtTexts[counter]
         utils.log_image(experiment, batch, text, 'train', ckptpath, counter, epoch)
@@ -177,3 +178,4 @@ def main():
 
 if __name__ == '__main__':
   main()
+
