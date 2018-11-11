@@ -29,7 +29,11 @@ class Model:
     self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, Model.imgSize[0], Model.imgSize[1]))
 
     # CNN
-    cnnOut4d = self.setupCNN(self.inputImgs, args)
+    if args.densenet:
+      cnnOut4d = self.setupCNNdensenet(self.inputImgs, args)
+    else:
+      cnnOut4d = self.setupCNN(self.inputImgs)
+
 
     # RNN
     rnnOut3d = self.setupRNN(cnnOut4d)
@@ -45,27 +49,30 @@ class Model:
     # initialize TF
     (self.sess, self.saver) = self.setupTF()
 
-  # def setupCNN(self, cnnIn3d):
-  #   "create CNN layers and return output of these layers"
-  #   cnnIn4d = tf.expand_dims(input=cnnIn3d, axis=3)
-  #
-  #   # list of parameters for the layers
-  #   kernelVals = [5, 5, 3, 3, 3]
-  #   featureVals = [1, 32, 64, 128, 128, 256]
-  #   strideVals = poolVals = [(2, 2), (2, 2), (1, 2), (1, 2), (1, 2)]
-  #   numLayers = len(strideVals)
-  #
-  #   # create layers
-  #   pool = cnnIn4d  # input to first CNN layer
-  #   for i in range(numLayers):
-  #     kernel = tf.Variable(
-  #       tf.truncated_normal([kernelVals[i], kernelVals[i], featureVals[i], featureVals[i + 1]], stddev=0.1))
-  #     conv = tf.nn.conv2d(pool, kernel, padding='SAME', strides=(1, 1, 1, 1))
-  #     relu = tf.nn.relu(conv)
-  #     pool = tf.nn.max_pool(relu, (1, poolVals[i][0], poolVals[i][1], 1), (1, strideVals[i][0], strideVals[i][1], 1),
-  #                           'VALID')
+  def setupCNN(self, cnnIn3d):
+    "create CNN layers and return output of these layers"
+    cnnIn4d = tf.expand_dims(input=cnnIn3d, axis=3)
 
-  def setupCNN(self, cnnIn3d, args):
+    # list of parameters for the layers
+    kernelVals = [5, 5, 3, 3, 3]
+    featureVals = [1, 32, 64, 128, 128, 256]
+    strideVals = poolVals = [(2, 2), (2, 2), (1, 2), (1, 2), (1, 2)]
+    numLayers = len(strideVals)
+
+    # create layers
+    pool = cnnIn4d  # input to first CNN layer
+    for i in range(numLayers):
+      kernel = tf.Variable(
+        tf.truncated_normal([kernelVals[i], kernelVals[i], featureVals[i], featureVals[i + 1]], stddev=0.1))
+      conv = tf.nn.conv2d(pool, kernel, padding='SAME', strides=(1, 1, 1, 1))
+      relu = tf.nn.relu(conv)
+      pool = tf.nn.max_pool(relu, (1, poolVals[i][0], poolVals[i][1], 1), (1, strideVals[i][0], strideVals[i][1], 1),
+                            'VALID')
+
+    self.is_training = tf.placeholder(tf.bool, shape=[]) # dummy placeholder to prevent error
+    return pool
+
+  def setupCNNdensenet(self, cnnIn3d, args):
     "create CNN layers and return output of these layers"
     cnnIn4d = tf.expand_dims(input=cnnIn3d, axis=3)
     net = Densenet4htr(cnnIn4d, **vars(args))

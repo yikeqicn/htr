@@ -1,6 +1,6 @@
 from comet_ml import Experiment
 experiment = Experiment(api_key="vPCPPZrcrUBitgoQkvzxdsh9k", parse_args=False,
-                        project_name='htr-restart3')
+                        project_name='compare_baseline_densenet')
 
 import sys
 import argparse
@@ -31,12 +31,13 @@ parser.add_argument("--batchsize", default=50, type=int, help='batch size')
 parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
 parser.add_argument("--dataset", default='iam', type=str, help='[iam, mnistseq]')
 # densenet hyperparams
+parser.add_argument("--densenet", help="use densenet", action="store_true")
 parser.add_argument("--growth_rate", default=12, type=int, help='growth rate (k)')
-parser.add_argument("--depth", default=40, type=int, help='number of layers in whole network')
+parser.add_argument("--depth", default=100, type=int, help='number of layers in whole network')
 parser.add_argument("--total_blocks", default=5, type=int, help='nuber of densenet blocks')
 parser.add_argument("--time_steps", default=32, type=int, help='number of desired time steps (image slices) to feed rnn')
 parser.add_argument("--keep_prob", default=1, type=float, help='keep probability in dropout')
-parser.add_argument("--reduction", default=.5, type=float, help='reduction factor in 1x1 conv in transition layers')
+parser.add_argument("--reduction", default=0.75, type=float, help='reduction factor in 1x1 conv in transition layers')
 parser.add_argument("--bc_mode", default=True, type=bool, help="bottleneck and compresssion mode")
 args = parser.parse_args()
 

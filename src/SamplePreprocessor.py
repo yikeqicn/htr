@@ -79,7 +79,7 @@ def preprocess(img, imgSize, args, dataAugmentation=False):
     # ADDED by ronny
       img = horizontal_stretch(img, minFactor=.5, maxFactor=1.5)
       img = target_aspect_pad(img, targetRatio=imgSize[1]/imgSize[0])
-      img = keep_aspect_pad(img, maxFactor=1.3)
+      img = keep_aspect_pad(img, maxFactor=1.5)
 
     target = cv2.resize(img, imgSize, interpolation=cv2.INTER_CUBIC)
 
