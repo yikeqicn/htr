@@ -17,18 +17,29 @@ import matplotlib.pyplot as plt
 import shutil
 import utils
 
-# optional command line args
+# basic operations
 parser = argparse.ArgumentParser()
-parser.add_argument("--train", help="train the NN", action="store_true")
-parser.add_argument("--validate", help="validate the NN", action="store_true")
-parser.add_argument("--beamsearch", help="use beam search instead of best path decoding", action="store_true")
-parser.add_argument("--wordbeamsearch", help="use word beam search instead of best path decoding", action="store_true")
 parser.add_argument("--name", default='debug', type=str, help="name of the log")
 parser.add_argument("--gpu", default='0', type=str, help="gpu numbers")
+parser.add_argument("--train", help="train the NN", action="store_true")
+parser.add_argument("--validate", help="validate the NN", action="store_true")
+# beam search
+parser.add_argument("--beamsearch", help="use beam search instead of best path decoding", action="store_true")
+parser.add_argument("--wordbeamsearch", help="use word beam search instead of best path decoding", action="store_true")
+# basic hyperparams
 parser.add_argument("--batchsize", default=50, type=int, help='batch size')
-parser.add_argument("--custom", help="custom augmentation", action="store_true")
+parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
 parser.add_argument("--dataset", default='iam', type=str, help='[iam, mnistseq]')
+# densenet hyperparams
+parser.add_argument("--growth_rate", default=12, type=int, help='growth rate (k)')
+parser.add_argument("--depth", default=40, type=int, help='number of layers in whole network')
+parser.add_argument("--total_blocks", default=5, type=int, help='nuber of densenet blocks')
+parser.add_argument("--time_steps", default=32, type=int, help='number of desired time steps (image slices) to feed rnn')
+parser.add_argument("--keep_prob", default=1, type=float, help='keep probability in dropout')
+parser.add_argument("--reduction", default=.5, type=float, help='reduction factor in 1x1 conv in transition layers')
+parser.add_argument("--bc_mode", default=True, type=bool, help="bottleneck and compresssion mode")
 args = parser.parse_args()
+
 experiment.set_name(args.name)
 experiment.log_multiple_params(vars(args))
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu

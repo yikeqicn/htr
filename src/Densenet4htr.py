@@ -11,6 +11,7 @@ TF_VERSION = float('.'.join(tf.__version__.split('.')[:2]))
 
 
 class Densenet4htr:
+  '''modified densenet suitable for handwritten text recognition. modified by ronny'''
   def __init__(self, inputTensor,
                growth_rate=12, # choices=[12, 24, 40]
                depth=40, # choices=[40, 100, 190, 250]
@@ -19,6 +20,7 @@ class Densenet4htr:
                model_type='Densenet4htr',
                reduction=1.0,
                bc_mode=True,
+               time_steps=32,
                **kwargs):
     """
     Class to implement networks from this paper
@@ -74,6 +76,7 @@ class Densenet4htr:
     print("Reduction at transition layers: %.1f" % self.reduction)
 
     self.keep_prob = keep_prob
+    self.time_steps = time_steps
     # self.weight_decay = weight_decay
     # self.nesterov_momentum = nesterov_momentum
     # self.model_type = model_type
@@ -257,8 +260,8 @@ class Densenet4htr:
     output = self.composite_function(
       _input, out_features=out_features, kernel_size=1)
     # run average pooling
-    assert _input.shape[1]>=48, 'input width is not correct' # ADDED BY RONNY
-    output = self.avg_pool(output, k=2, preserve_width=(_input.shape[1]==48)) # ADDED BY RONNY
+    assert _input.shape[1]>=self.time_steps, 'input width is not correct' # ADDED BY RONNY
+    output = self.avg_pool(output, k=2, preserve_width=(_input.shape[1]==self.time_steps)) # ADDED BY RONNY
     return output
 
   def transition_layer_to_classes(self, _input):
@@ -293,16 +296,34 @@ class Densenet4htr:
     output = tf.nn.conv2d(_input, kernel, strides, padding)
     return output
 
-  def avg_pool(self, _input, k, preserve_width=False):
+  def avg_pool(self, _input, k, preserve_width=False, initial_conv=False):
     if preserve_width: # ADDED BY RONNY
       ksize = [1, 1, k, 1]
       strides = [1, 1, k, 1]
+    elif initial_conv: # ADDED BY RONNY
+      ksize = [1, 3, 3, 1]
+      strides = [1, 2, 2, 1]
     else:
       ksize = [1, k, k, 1]
       strides = [1, k, k, 1]
     padding = 'VALID'
     output = tf.nn.avg_pool(_input, ksize, strides, padding)
     return output
+
+  def max_pool(self, _input, k, preserve_width=False, initial_conv=False):
+    if preserve_width: # ADDED BY RONNY
+      ksize = [1, 1, k, 1]
+      strides = [1, 1, k, 1]
+    elif initial_conv: # ADDED BY RONNY
+      ksize = [1, 3, 3, 1]
+      strides = [1, 2, 2, 1]
+    else:
+      ksize = [1, k, k, 1]
+      strides = [1, k, k, 1]
+    padding = 'SAME'
+    output = tf.nn.max_pool(_input, ksize, strides, padding)
+    return output
+
 
   def batch_norm(self, _input):
     output = tf.contrib.layers.batch_norm(
@@ -348,7 +369,9 @@ class Densenet4htr:
         # self.images,
         self.inputTensor, # ADDED BY RONNY
         out_features=self.first_output_features,
-        kernel_size=3)
+        kernel_size=7) # MODIFIED BY RONNY
+    with tf.variable_scope("Initial_convolution_maxpool"):
+      output = self.max_pool(output, k=2, initial_conv=True) # ADDED BY RONNY
 
     # add N required blocks
     for block in range(self.total_blocks):
@@ -473,5 +496,5 @@ class Densenet4htr:
 def densenet_feature_extractor(inputTensor, args):
   return Densenet4htr(inputTensor, **vars(args))
 
-inputTensor = tf.placeholder(tf.float32, shape=[None, 192, 32, 3])
-net = densenet_feature_extractor(inputTensor, args)
+# inputTensor = tf.placeholder(tf.float32, shape=[None, 192, 32, 3])
+# net = densenet_feature_extractor(inputTensor, args)

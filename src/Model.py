@@ -1,6 +1,7 @@
 import sys
 import tensorflow as tf
 from os.path import join
+from Densenet4htr import Densenet4htr
 
 class DecoderType:
   BestPath = 0
@@ -28,7 +29,7 @@ class Model:
     self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, Model.imgSize[0], Model.imgSize[1]))
 
     # CNN
-    cnnOut4d = self.setupCNN(self.inputImgs)
+    cnnOut4d = self.setupCNN(self.inputImgs, args)
 
     # RNN
     rnnOut3d = self.setupRNN(cnnOut4d)
@@ -44,27 +45,33 @@ class Model:
     # initialize TF
     (self.sess, self.saver) = self.setupTF()
 
-  def setupCNN(self, cnnIn3d):
+  # def setupCNN(self, cnnIn3d):
+  #   "create CNN layers and return output of these layers"
+  #   cnnIn4d = tf.expand_dims(input=cnnIn3d, axis=3)
+  #
+  #   # list of parameters for the layers
+  #   kernelVals = [5, 5, 3, 3, 3]
+  #   featureVals = [1, 32, 64, 128, 128, 256]
+  #   strideVals = poolVals = [(2, 2), (2, 2), (1, 2), (1, 2), (1, 2)]
+  #   numLayers = len(strideVals)
+  #
+  #   # create layers
+  #   pool = cnnIn4d  # input to first CNN layer
+  #   for i in range(numLayers):
+  #     kernel = tf.Variable(
+  #       tf.truncated_normal([kernelVals[i], kernelVals[i], featureVals[i], featureVals[i + 1]], stddev=0.1))
+  #     conv = tf.nn.conv2d(pool, kernel, padding='SAME', strides=(1, 1, 1, 1))
+  #     relu = tf.nn.relu(conv)
+  #     pool = tf.nn.max_pool(relu, (1, poolVals[i][0], poolVals[i][1], 1), (1, strideVals[i][0], strideVals[i][1], 1),
+  #                           'VALID')
+
+  def setupCNN(self, cnnIn3d, args):
     "create CNN layers and return output of these layers"
     cnnIn4d = tf.expand_dims(input=cnnIn3d, axis=3)
-
-    # list of parameters for the layers
-    kernelVals = [5, 5, 3, 3, 3]
-    featureVals = [1, 32, 64, 128, 128, 256]
-    strideVals = poolVals = [(2, 2), (2, 2), (1, 2), (1, 2), (1, 2)]
-    numLayers = len(strideVals)
-
-    # create layers
-    pool = cnnIn4d  # input to first CNN layer
-    for i in range(numLayers):
-      kernel = tf.Variable(
-        tf.truncated_normal([kernelVals[i], kernelVals[i], featureVals[i], featureVals[i + 1]], stddev=0.1))
-      conv = tf.nn.conv2d(pool, kernel, padding='SAME', strides=(1, 1, 1, 1))
-      relu = tf.nn.relu(conv)
-      pool = tf.nn.max_pool(relu, (1, poolVals[i][0], poolVals[i][1], 1), (1, strideVals[i][0], strideVals[i][1], 1),
-                            'VALID')
-
-    return pool
+    net = Densenet4htr(cnnIn4d, **vars(args))
+    self.is_training = net.is_training
+    print('shape of cnn output: '+str(net.output.get_shape().as_list()))
+    return net.output
 
   def setupRNN(self, rnnIn4d):
     "create RNN layers and return output of these layers"
@@ -208,14 +215,15 @@ class Model:
     (_, lossVal) = self.sess.run([self.optimizer, self.loss], {self.inputImgs: batch.imgs,
                                                                self.gtTexts: sparse,
                                                                self.seqLen: [Model.maxTextLen] * self.batchsize,
-                                                               self.learningRate: rate})
+                                                               self.learningRate: rate,
+                                                               self.is_training: True})
     self.batchesTrained += 1
     return lossVal
 
   def inferBatch(self, batch):
     "feed a batch into the NN to recngnize the texts"
     decoded = self.sess.run(self.decoder,
-                            {self.inputImgs: batch.imgs, self.seqLen: [Model.maxTextLen] * self.batchsize})
+                            {self.inputImgs: batch.imgs, self.seqLen: [Model.maxTextLen] * self.batchsize, self.is_training: False})
     return self.decoderOutputToText(decoded)
 
   def save(self):
