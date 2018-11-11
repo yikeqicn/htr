@@ -1,4 +1,3 @@
-
 from comet_ml import Experiment
 experiment = Experiment(api_key="vPCPPZrcrUBitgoQkvzxdsh9k", parse_args=False,
                         project_name='htr-restart3')
@@ -44,7 +43,6 @@ os.makedirs(ckptpath, exist_ok=True)
 # chublet
 class FilePaths:
   "filenames and paths to data"
-
   fnCkptpath = ckptpath
   fnCharList = join(ckptpath, 'charList.txt')
   fnCorpus = join(ckptpath, 'corpus.txt')
@@ -70,9 +68,9 @@ def train(model, loader):
       iterInfo = loader.getIteratorInfo()
       batch = loader.getNext()
       loss = model.trainBatch(batch)
+      step = iterInfo[0]+(epoch-1)*iterInfo[1]
       if np.mod(iterInfo[0],200)==0:
         print('TRAIN: Batch:', iterInfo[0], '/', iterInfo[1], 'Loss:', loss)
-        step = iterInfo[0]+(epoch-1)*iterInfo[1]
         experiment.log_metric('train/loss', loss, step)
       if counter<5: # log images
         text = batch.gtTexts[counter]
@@ -171,11 +169,8 @@ def main():
   else:
     print(open(FilePaths.fnAccuracy).read())
     model = Model(args, open(FilePaths.fnCharList).read(), decoderType, mustRestore=True, FilePaths=FilePaths)
-    print(FilePaths.fnCkptpath)
-    model = Model(args, open(FilePaths.fnCharList).read(), mustRestore=True, FilePaths=FilePaths)
     infer(model, FilePaths.fnInfer)
 
 
 if __name__ == '__main__':
   main()
-

@@ -24,8 +24,10 @@ class Model:
     self.FilePaths = FilePaths
     self.batchsize = args.batchsize
 
-    # CNN
+    # Input
     self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, Model.imgSize[0], Model.imgSize[1]))
+
+    # CNN
     cnnOut4d = self.setupCNN(self.inputImgs)
 
     # RNN
@@ -98,6 +100,7 @@ class Model:
     # calc loss for batch
     self.seqLen = tf.placeholder(tf.int32, [None])
     loss = tf.nn.ctc_loss(labels=self.gtTexts, inputs=ctcIn3dTBC, sequence_length=self.seqLen, ctc_merge_repeated=True)
+
     # decoder: either best path decoding or beam search decoding
     if self.decoderType == DecoderType.BestPath:
       decoder = tf.nn.ctc_greedy_decoder(inputs=ctcIn3dTBC, sequence_length=self.seqLen)
