@@ -6,4 +6,5 @@ several things to do
 - implement underlines
 - transfer learning from iam
   - construct image "playground"
-  - deslant
+  - deslantt i
+- implement logging of training accuracy to see about overfitting

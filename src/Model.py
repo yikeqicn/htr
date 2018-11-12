@@ -69,11 +69,11 @@ class Model:
       pool = tf.nn.max_pool(relu, (1, poolVals[i][0], poolVals[i][1], 1), (1, strideVals[i][0], strideVals[i][1], 1),
                             'VALID')
 
-    self.is_training = tf.placeholder(tf.bool, shape=[]) # dummy placeholder to prevent error
+    self.is_training = tf.placeholder(tf.bool, shape=[]) # dummy placeholder to prevent error, no effect
     return pool
 
   def setupCNNdensenet(self, cnnIn3d, args):
-    "create CNN layers and return output of these layers"
+    "ADDED BY RONNY: densenet cnn"
     cnnIn4d = tf.expand_dims(input=cnnIn3d, axis=3)
     net = Densenet4htr(cnnIn4d, **vars(args))
     self.is_training = net.is_training
