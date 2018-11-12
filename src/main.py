@@ -1,6 +1,6 @@
 from comet_ml import Experiment
 experiment = Experiment(api_key="vPCPPZrcrUBitgoQkvzxdsh9k", parse_args=False,
-                        project_name='compare_baseline_densenet')
+                        project_name='densenet-reduction')
 
 import sys
 import argparse
@@ -37,7 +37,7 @@ parser.add_argument("--depth", default=100, type=int, help='number of layers in 
 parser.add_argument("--total_blocks", default=5, type=int, help='nuber of densenet blocks')
 parser.add_argument("--time_steps", default=32, type=int, help='number of desired time steps (image slices) to feed rnn')
 parser.add_argument("--keep_prob", default=1, type=float, help='keep probability in dropout')
-parser.add_argument("--reduction", default=0.75, type=float, help='reduction factor in 1x1 conv in transition layers')
+parser.add_argument("--reduction", default=0.8, type=float, help='reduction factor in 1x1 conv in transition layers')
 parser.add_argument("--bc_mode", default=True, type=bool, help="bottleneck and compresssion mode")
 args = parser.parse_args()
 
@@ -68,7 +68,7 @@ def train(model, loader):
   epoch = 0  # number of training epochs since start
   bestCharErrorRate = float('inf')  # best valdiation character error rate
   noImprovementSince = 0  # number of epochs no improvement of character error rate occured
-  earlyStopping = 5  # stop training after this number of epochs without improvement
+  earlyStopping = 10  # stop training after this number of epochs without improvement
   while True:
     epoch += 1
     print('Epoch:', epoch, ' Training...')
