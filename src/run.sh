@@ -6,3 +6,5 @@ nohup python main.py --gpu=1 --train --name=noncustom-bs --beamsearch --noncusto
 nohup python main.py --gpu=2 --train --name=densenet-noncustom --densenet --noncustom &
 nohup python main.py --gpu=3 --train --name=densenet-noncustom-beamsearch --densenet --noncustom &
 
+
+
