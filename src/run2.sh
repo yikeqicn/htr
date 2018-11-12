@@ -5,3 +5,4 @@
 #nohup python main.py --gpu=1 --train --name=growthrate-7 --densenet --beamsearch --growth_rate=7 &
 
 nohup python main.py --gpu=2 --train --name=dropout --densenet --beamsearch --keep_prob=.5 &
+
