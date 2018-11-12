@@ -29,11 +29,10 @@ class Model:
     self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, Model.imgSize[0], Model.imgSize[1]))
 
     # CNN
-    if args.densenet:
-      cnnOut4d = self.setupCNNdensenet(self.inputImgs, args)
-    else:
+    if args.noncustom:
       cnnOut4d = self.setupCNN(self.inputImgs)
-
+    else: # use densenet by default
+      cnnOut4d = self.setupCNNdensenet(self.inputImgs, args)
 
     # RNN
     rnnOut3d = self.setupRNN(cnnOut4d)
@@ -50,7 +49,7 @@ class Model:
     (self.sess, self.saver) = self.setupTF()
 
   def setupCNN(self, cnnIn3d):
-    "create CNN layers and return output of these layers"
+    "vanilla cnn from original github repo"
     cnnIn4d = tf.expand_dims(input=cnnIn3d, axis=3)
 
     # list of parameters for the layers
@@ -100,8 +99,11 @@ class Model:
     concat = tf.expand_dims(tf.concat([fw, bw], 2), 2)
 
     # project output to chars (including blank): BxTx1x2H -> BxTx1xC -> BxTxC
-    kernel = tf.Variable(tf.truncated_normal([1, 1, numHidden * 2, len(self.charList) + 1], stddev=0.1))
-    return tf.squeeze(tf.nn.atrous_conv2d(value=concat, filters=kernel, rate=1, padding='SAME'), axis=[2])
+    kernel = tf.Variable(tf.truncated_normal([1, 1, numHidden * 2, len(self.charList) + 1], stddev=0.1), name='kernel')
+    logits = tf.squeeze(tf.nn.atrous_conv2d(value=concat, filters=kernel, rate=1, padding='SAME'), axis=[2])
+    # with tf.variable_scope('logits'):
+    #   logits = tf.squeeze(tf.layers.conv2d(concat, len(self.charList)+1, 1, use_bias=True), axis=[2]) # FIXED BY RONNY
+    return logits
 
   def setupCTC(self, ctcIn3d):
     "create CTC loss and decoder and return them"
@@ -145,22 +147,32 @@ class Model:
 
     sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))
 
+    if self.FilePaths.fnTransferFrom==None:
 
-    saver = tf.train.Saver(max_to_keep=1)  # saver saves model to file
-    modelDir = self.FilePaths.fnCkptpath
-    latestSnapshot = tf.train.latest_checkpoint(modelDir)  # is there a saved model?
+      saver = tf.train.Saver(max_to_keep=1)  # saver saves model to file
+      modelDir = self.FilePaths.fnCkptpath
+      latestSnapshot = tf.train.latest_checkpoint(modelDir)  # is there a saved model?
 
-    # if model must be restored (for inference), there must be a snapshot
-    if self.mustRestore and not latestSnapshot:
-      raise Exception('No saved model found in: ' + modelDir)
+      # if model must be restored (for inference), there must be a snapshot
+      if self.mustRestore and not latestSnapshot:
+        raise Exception('No saved model found in: ' + modelDir)
 
-    # load saved model if available
-    if latestSnapshot:
-      print('Init with stored values from ' + latestSnapshot)
-      saver.restore(sess, latestSnapshot)
+      # load saved model if available
+      if latestSnapshot:
+        print('Init with stored values from ' + latestSnapshot)
+        saver.restore(sess, latestSnapshot)
+      else:
+        print('Init with new values')
+        sess.run(tf.global_variables_initializer())
+
     else:
-      print('Init with new values')
+
       sess.run(tf.global_variables_initializer())
+      saver = tf.train.Saver(tf.trainable_variables()[:-2])  # load all variables except logit kernel/bias
+      latestSnapshot = tf.train.latest_checkpoint(self.FilePaths.fnTransferFrom)  # is there a saved model?
+      if not latestSnapshot: raise Exception('No TransferFrom saved model in '+self.FilePaths.fnTransferFrom)
+      print('Init with stored values (except logit layer) from ' + latestSnapshot)
+      saver.restore(sess, latestSnapshot)
 
     return (sess, saver)
 
