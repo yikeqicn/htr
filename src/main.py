@@ -16,6 +16,7 @@ from os.path import join, basename, dirname
 import matplotlib.pyplot as plt
 import shutil
 import utils
+import sys
 home = os.environ['HOME']
 
 # basic operations
@@ -46,6 +47,8 @@ parser.add_argument("--keep_prob", default=1, type=float, help='keep probability
 parser.add_argument("--reduction", default=0.75, type=float, help='reduction factor in 1x1 conv in transition layers')
 parser.add_argument("--bc_mode", default=True, type=bool, help="bottleneck and compresssion mode")
 args = parser.parse_args()
+with open('commands.log', 'a') as f:
+  f.writelines(['nohup python '+' '.join(sys.argv)+' &']) # write command to the log
 
 experiment.set_name(args.name)
 experiment.log_multiple_params(vars(args))
