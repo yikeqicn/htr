@@ -29,7 +29,7 @@ class Model:
     self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, Model.imgSize[0], Model.imgSize[1]))
 
     # CNN
-    if args.noncustom:
+    if args.nondensenet:
       cnnOut4d = self.setupCNN(self.inputImgs)
     else: # use densenet by default
       cnnOut4d = self.setupCNNdensenet(self.inputImgs, args)
@@ -99,7 +99,7 @@ class Model:
     concat = tf.expand_dims(tf.concat([fw, bw], 2), 2)
 
     # project output to chars (including blank): BxTx1x2H -> BxTx1xC -> BxTxC
-    kernel = tf.Variable(tf.truncated_normal([1, 1, numHidden * 2, len(self.charList) + 1], stddev=0.1), name='kernel')
+    kernel = tf.Variable(tf.truncated_normal([1, 1, numHidden * 2, len(self.charList) + 1], stddev=0.1))
     logits = tf.squeeze(tf.nn.atrous_conv2d(value=concat, filters=kernel, rate=1, padding='SAME'), axis=[2])
     # with tf.variable_scope('logits'):
     #   logits = tf.squeeze(tf.layers.conv2d(concat, len(self.charList)+1, 1, use_bias=True), axis=[2]) # FIXED BY RONNY
@@ -168,11 +168,15 @@ class Model:
     else:
 
       sess.run(tf.global_variables_initializer())
-      saver = tf.train.Saver(tf.trainable_variables()[:-2])  # load all variables except logit kernel/bias
+      saver = tf.train.Saver(tf.trainable_variables()[:-1])  # load all variables except from logit layer
       latestSnapshot = tf.train.latest_checkpoint(self.FilePaths.fnTransferFrom)  # is there a saved model?
       if not latestSnapshot: raise Exception('No TransferFrom saved model in '+self.FilePaths.fnTransferFrom)
       print('Init with stored values (except logit layer) from ' + latestSnapshot)
+      print('layer1, orig', sess.run(tf.trainable_variables()[0][0][0]))
+      print('layer-1, orig', sess.run(tf.trainable_variables()[-1][0][0][0]))
       saver.restore(sess, latestSnapshot)
+      print('layer1, transfer', sess.run(tf.trainable_variables()[0][0][0]))
+      print('layer-1, transfer', sess.run(tf.trainable_variables()[-1][0][0][0]))
 
     return (sess, saver)
 

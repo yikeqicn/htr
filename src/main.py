@@ -32,12 +32,13 @@ parser.add_argument("--batchsize", default=50, type=int, help='batch size')
 parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
 parser.add_argument("--dataset", default='iam', type=str, help='[iam, mnistseq]')
 # densenet hyperparams
+parser.add_argument("--nondensenet", help="noncustom (original) vanilla cnn", action="store_true")
 parser.add_argument("--growth_rate", default=12, type=int, help='growth rate (k)')
 parser.add_argument("--depth", default=100, type=int, help='number of layers in whole network')
 parser.add_argument("--total_blocks", default=5, type=int, help='nuber of densenet blocks')
 parser.add_argument("--time_steps", default=32, type=int, help='number of desired time steps (image slices) to feed rnn')
 parser.add_argument("--keep_prob", default=1, type=float, help='keep probability in dropout')
-parser.add_argument("--reduction", default=0.4, type=float, help='reduction factor in 1x1 conv in transition layers')
+parser.add_argument("--reduction", default=0.75, type=float, help='reduction factor in 1x1 conv in transition layers')
 parser.add_argument("--bc_mode", default=True, type=bool, help="bottleneck and compresssion mode")
 args = parser.parse_args()
 
@@ -56,7 +57,7 @@ os.makedirs(ckptpath, exist_ok=True)
 class FilePaths:
   "filenames and paths to data"
   fnCkptpath = ckptpath
-  fnTransferFrom = join(ckptroot, args.pt_name)
+  fnTransferFrom = join(ckptroot, args.transfer_from) if args.transfer_from!=None else None
   fnCharList = join(ckptpath, 'charList.txt')
   fnCorpus = join(ckptpath, 'corpus.txt')
   fnAccuracy = join(ckptpath, 'accuracy.txt')
