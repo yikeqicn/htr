@@ -24,6 +24,7 @@ class Model:
     self.snapID = 0
     self.FilePaths = FilePaths
     self.batchsize = args.batchsize
+    self.lrInit = args.lrInit
 
     # Input
     self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, Model.imgSize[0], Model.imgSize[1]))
@@ -41,7 +42,7 @@ class Model:
     (self.loss, self.decoder) = self.setupCTC(rnnOut3d)
 
     # optimizer for NN parameters
-    self.batchesTrained = 0
+    self.batchesTrained = args.batchesTrained
     self.learningRate = tf.placeholder(tf.float32, shape=[])
     self.optimizer = tf.train.RMSPropOptimizer(self.learningRate).minimize(self.loss)
 
@@ -147,36 +148,29 @@ class Model:
 
     sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))
 
-    if self.FilePaths.fnTransferFrom==None:
+    saver = tf.train.Saver(max_to_keep=1)  # saver saves model to file
+    modelDir = self.FilePaths.fnCkptpath
+    latestSnapshot = tf.train.latest_checkpoint(modelDir)  # is there a saved model?
 
-      saver = tf.train.Saver(max_to_keep=1)  # saver saves model to file
-      modelDir = self.FilePaths.fnCkptpath
-      latestSnapshot = tf.train.latest_checkpoint(modelDir)  # is there a saved model?
+    # if model must be restored (for inference), there must be a snapshot
+    if self.mustRestore and not latestSnapshot:
+      raise Exception('No saved model found in: ' + modelDir)
 
-      # if model must be restored (for inference), there must be a snapshot
-      if self.mustRestore and not latestSnapshot:
-        raise Exception('No saved model found in: ' + modelDir)
-
-      # load saved model if available
-      if latestSnapshot:
-        print('Init with stored values from ' + latestSnapshot)
-        saver.restore(sess, latestSnapshot)
-      else:
-        print('Init with new values')
-        sess.run(tf.global_variables_initializer())
-
+    # load saved model if available
+    if latestSnapshot:
+      print('Init with stored values from ' + latestSnapshot)
+      saver.restore(sess, latestSnapshot)
     else:
-
+      print('Init with new values')
       sess.run(tf.global_variables_initializer())
-      saver = tf.train.Saver(tf.trainable_variables()[:-1])  # load all variables except from logit layer
+
+    if self.FilePaths.fnTransferFrom!=None: # ADDED BY RONNY initialize params from other model (transfer learning)
+
+      saverTransfer = tf.train.Saver(tf.trainable_variables()[:-1])  # load all variables except from logit (classification) layer
       latestSnapshot = tf.train.latest_checkpoint(self.FilePaths.fnTransferFrom)  # is there a saved model?
       if not latestSnapshot: raise Exception('No TransferFrom saved model in '+self.FilePaths.fnTransferFrom)
       print('Init with stored values (except logit layer) from ' + latestSnapshot)
-      print('layer1, orig', sess.run(tf.trainable_variables()[0][0][0]))
-      print('layer-1, orig', sess.run(tf.trainable_variables()[-1][0][0][0]))
-      saver.restore(sess, latestSnapshot)
-      print('layer1, transfer', sess.run(tf.trainable_variables()[0][0][0]))
-      print('layer-1, transfer', sess.run(tf.trainable_variables()[-1][0][0][0]))
+      saverTransfer.restore(sess, latestSnapshot)
 
     return (sess, saver)
 
@@ -233,12 +227,12 @@ class Model:
   def trainBatch(self, batch):
     "feed a batch into the NN to train it"
     sparse = self.toSparse(batch.gtTexts)
-    rate = 0.01 if self.batchesTrained < 10 else (
-      0.001 if self.batchesTrained < 10000 else 0.0001)  # decay learning rate
+    lrnrate = self.lrInit if self.batchesTrained < 10 else (
+      self.lrInit*1e-1 if self.batchesTrained < 10000 else self.lrInit*1e-2)  # decay learning rate
     (_, lossVal) = self.sess.run([self.optimizer, self.loss], {self.inputImgs: batch.imgs,
                                                                self.gtTexts: sparse,
                                                                self.seqLen: [Model.maxTextLen] * self.batchsize,
-                                                               self.learningRate: rate,
+                                                               self.learningRate: lrnrate,
                                                                self.is_training: True})
     self.batchesTrained += 1
     return lossVal

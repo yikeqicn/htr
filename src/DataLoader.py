@@ -33,7 +33,7 @@ class DataLoader:
     self.imgSize = imgSize
     self.samples = []
 
-    if args.dataset=='iam':
+    if args.iam:
 
       f = open(filePath + 'words.txt')
       chars = set()
@@ -57,16 +57,16 @@ class DataLoader:
         # put sample into list
         self.samples.append(Sample(gtText, fileName))
 
-    elif args.dataset=='mnistseq':
+    else:
       # MODIFIED HERE FOR OUR CUSTOM DATASET
-      fileName = glob(join(filePath, '*.jpg'))
+      fileName = glob(join(filePath, '*/*.jpg'))
       gtText = [os.path.basename(f)[:-4] for f in fileName]
       chars = set.union(*[set(t) for t in gtText])
       self.samples = [Sample(g,f) for g,f in zip(gtText, fileName)]
 
     # split into training and validation set: 95% - 5%
     random.shuffle(self.samples)
-    splitIdx = int(0.95 * len(self.samples))
+    splitIdx = int(0.90 * len(self.samples))
     self.trainSamples = self.samples[:splitIdx]
     self.validationSamples = self.samples[splitIdx:]
     print("Number of train/valid samples: ", len(self.trainSamples), ",", len(self.validationSamples))

@@ -1,6 +1,6 @@
 from comet_ml import Experiment
 experiment = Experiment(api_key="vPCPPZrcrUBitgoQkvzxdsh9k", parse_args=False,
-                        project_name='densenet-reduction')
+                        project_name='transferlearn-init')
 
 import sys
 import argparse
@@ -16,6 +16,7 @@ from os.path import join, basename, dirname
 import matplotlib.pyplot as plt
 import shutil
 import utils
+home = os.environ['HOME']
 
 # basic operations
 parser = argparse.ArgumentParser()
@@ -24,13 +25,17 @@ parser.add_argument("--gpu", default='0', type=str, help="gpu numbers")
 parser.add_argument("--train", help="train the NN", action="store_true")
 parser.add_argument("--validate", help="validate the NN", action="store_true")
 parser.add_argument("--transfer_from", default=None, type=str, help="name of pretrained model for transfer learning")
+parser.add_argument("--batchesTrained", default=0, type=int, help='number of batches already trained (for lr schedule)')
 # beam search
 parser.add_argument("--beamsearch", help="use beam search instead of best path decoding", action="store_true")
 parser.add_argument("--wordbeamsearch", help="use word beam search instead of best path decoding", action="store_true")
 # basic hyperparams
 parser.add_argument("--batchsize", default=50, type=int, help='batch size')
+parser.add_argument("--lrInit", default=1e-2, type=float, help='initial learning rate')
+# trainset hyperparams
 parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
-parser.add_argument("--dataset", default='iam', type=str, help='[iam, mnistseq]')
+parser.add_argument("--iam", help='use iam dataset', action='store_true')
+parser.add_argument("--datapath", default='/root/datasets/htr_assets/crowdsource/extracted/', type=str, help="data path if not using iam")
 # densenet hyperparams
 parser.add_argument("--nondensenet", help="noncustom (original) vanilla cnn", action="store_true")
 parser.add_argument("--growth_rate", default=12, type=int, help='growth rate (k)')
@@ -46,7 +51,6 @@ experiment.set_name(args.name)
 experiment.log_multiple_params(vars(args))
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-home = os.environ['HOME']
 reporoot = join(home, 'repo')
 ckptroot = join(home, 'ckpt')
 ckptpath = join(ckptroot, args.name)
@@ -61,8 +65,10 @@ class FilePaths:
   fnCharList = join(ckptpath, 'charList.txt')
   fnCorpus = join(ckptpath, 'corpus.txt')
   fnAccuracy = join(ckptpath, 'accuracy.txt')
-  if args.dataset=='mnistseq': fnTrain = '/data/home/jdegange/vision/digitsdataset2/'
-  if args.dataset=='iam': fnTrain = join(home, 'datasets/iam_handwriting/')
+  # fnTrain = '/data/home/jdegange/vision/digitsdataset2/' # mnist digit sequences
+  # fnTrain = '/root/datasets/htr_assets/crowdsource/extracted/' # ey handwritten digit strings
+  fnTrain = args.datapath
+  if args.iam: fnTrain = join(home, 'datasets/iam_handwriting/')
   fnInfer = join(home, 'datasets', 'htr_debug', 'trainbold.png')
 
 def train(model, loader):
@@ -83,7 +89,7 @@ def train(model, loader):
       batch = loader.getNext()
       loss = model.trainBatch(batch)
       step = iterInfo[0]+(epoch-1)*iterInfo[1]
-      if np.mod(iterInfo[0],200)==0:
+      if np.mod(iterInfo[0],25)==0:
         print('TRAIN: Batch:', iterInfo[0], '/', iterInfo[1], 'Loss:', loss)
         experiment.log_metric('train/loss', loss, step)
       if counter<5: # log images
