@@ -1,6 +1,6 @@
 from comet_ml import Experiment
 experiment = Experiment(api_key="vPCPPZrcrUBitgoQkvzxdsh9k", parse_args=False,
-                        project_name='transferlearn-init')
+                        project_name='iam-hpsearch')
 
 import sys
 import argparse
@@ -33,6 +33,7 @@ parser.add_argument("--wordbeamsearch", help="use word beam search instead of be
 # basic hyperparams
 parser.add_argument("--batchsize", default=50, type=int, help='batch size')
 parser.add_argument("--lrInit", default=1e-2, type=float, help='initial learning rate')
+parser.add_argument("--adam", help="adam optimizer", action="store_true")
 # trainset hyperparams
 parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
 parser.add_argument("--iam", help='use iam dataset', action='store_true')
@@ -40,12 +41,14 @@ parser.add_argument("--datapath", default='/root/datasets/htr_assets/crowdsource
 # densenet hyperparams
 parser.add_argument("--nondensenet", help="noncustom (original) vanilla cnn", action="store_true")
 parser.add_argument("--growth_rate", default=12, type=int, help='growth rate (k)')
-parser.add_argument("--depth", default=100, type=int, help='number of layers in whole network')
+parser.add_argument("--layers_per_block", default=18, type=int, help='number of layers per block')
 parser.add_argument("--total_blocks", default=5, type=int, help='nuber of densenet blocks')
-parser.add_argument("--time_steps", default=32, type=int, help='number of desired time steps (image slices) to feed rnn')
+parser.add_argument("--rnnsteps", default=48, type=int, help='number of desired time steps (image slices) to feed rnn')
 parser.add_argument("--keep_prob", default=1, type=float, help='keep probability in dropout')
-parser.add_argument("--reduction", default=0.75, type=float, help='reduction factor in 1x1 conv in transition layers')
+parser.add_argument("--reduction", default=0.4, type=float, help='reduction factor in 1x1 conv in transition layers')
 parser.add_argument("--bc_mode", default=True, type=bool, help="bottleneck and compresssion mode")
+# rnn hyperparams
+parser.add_argument("--rnndim", default=256, type=int, help='rnn dimenstionality')
 args = parser.parse_args()
 # with open('commands.log', 'a') as f:
 #   f.write(['nohup python '+' '.join(sys.argv)+' &\n']) # write command to the log
@@ -80,7 +83,7 @@ def train(model, loader):
   epoch = 0  # number of training epochs since start
   bestCharErrorRate = float('inf')  # best valdiation character error rate
   noImprovementSince = 0  # number of epochs no improvement of character error rate occured
-  earlyStopping = 10  # stop training after this number of epochs without improvement
+  earlyStopping = 12  # stop training after this number of epochs without improvement
   while True:
     epoch += 1
     print('Epoch:', epoch, ' Training...')
@@ -93,7 +96,7 @@ def train(model, loader):
       batch = loader.getNext()
       loss = model.trainBatch(batch)
       step = iterInfo[0]+(epoch-1)*iterInfo[1]
-      if np.mod(iterInfo[0],25)==0:
+      if np.mod(iterInfo[0],200)==0:
         print('TRAIN: Batch:', iterInfo[0], '/', iterInfo[1], 'Loss:', loss)
         experiment.log_metric('train/loss', loss, step)
       if counter<5: # log images

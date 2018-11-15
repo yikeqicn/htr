@@ -13,7 +13,8 @@ class Model:
 
   # model constants
   batchSize = 50
-  imgSize = (128, 32)
+  # imgSize = (128, 32)
+  imgSize = (192, 48)
   maxTextLen = 32
 
   def __init__(self, args, charList, decoderType=DecoderType.BestPath, mustRestore=False, FilePaths=None):
@@ -25,6 +26,7 @@ class Model:
     self.FilePaths = FilePaths
     self.batchsize = args.batchsize
     self.lrInit = args.lrInit
+    self.rnndim = args.rnndim
 
     # Input
     self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, Model.imgSize[0], Model.imgSize[1]))
@@ -44,7 +46,10 @@ class Model:
     # optimizer for NN parameters
     self.batchesTrained = args.batchesTrained
     self.learningRate = tf.placeholder(tf.float32, shape=[])
-    self.optimizer = tf.train.RMSPropOptimizer(self.learningRate).minimize(self.loss)
+    if args.adam:
+      self.optimizer = tf.train.RMSPropOptimizer(self.learningRate).minimize(self.loss)
+    else:
+      self.optimizer = tf.train.AdamOptimizer(self.learningRate).minimize(self.loss)
 
     # initialize TF
     (self.sess, self.saver) = self.setupTF()
@@ -85,7 +90,7 @@ class Model:
     rnnIn3d = tf.squeeze(rnnIn4d, axis=[2])
 
     # basic cells which is used to build RNN
-    numHidden = 256
+    numHidden = self.rnndim
     cells = [tf.contrib.rnn.LSTMCell(num_units=numHidden, state_is_tuple=True) for _ in range(2)]  # 2 layers
 
     # stack basic cells

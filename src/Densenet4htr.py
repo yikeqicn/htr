@@ -14,7 +14,8 @@ class Densenet4htr:
   '''modified densenet suitable for handwritten text recognition. modified by ronny'''
   def __init__(self, inputTensor,
                growth_rate=12, # choices=[12, 24, 40]
-               depth=40, # choices=[40, 100, 190, 250]
+               # depth=40, # choices=[40, 100, 190, 250]
+               layers_per_block=9,
                total_blocks=3,
                keep_prob=1,
                model_type='Densenet4htr',
@@ -51,7 +52,7 @@ class Densenet4htr:
     # self.data_provider = data_provider
     # self.data_shape = data_provider.data_shape
     # self.n_classes = data_provider.n_classes
-    self.depth = depth
+    # self.depth = depth
     self.growth_rate = growth_rate
     # self.num_inter_threads = num_inter_threads
     # self.num_intra_threads = num_intra_threads
@@ -59,7 +60,9 @@ class Densenet4htr:
     # value the same as in the original Torch code
     self.first_output_features = growth_rate * 2
     self.total_blocks = total_blocks
-    self.layers_per_block = (depth - (total_blocks + 1)) // total_blocks
+    # self.layers_per_block = (depth - (total_blocks + 1)) // total_blocks
+    self.layers_per_block = layers_per_block
+    depth = layers_per_block * total_blocks + total_blocks + 1
     self.bc_mode = bc_mode
     # compression rate at the transition layers
     self.reduction = reduction
@@ -73,6 +76,7 @@ class Densenet4htr:
             "%d bottleneck layers and %d composite layers each." % (
               model_type, self.total_blocks, self.layers_per_block,
               self.layers_per_block))
+    print("Depth: %d" % depth)
     print("Reduction at transition layers: %.1f" % self.reduction)
 
     self.keep_prob = keep_prob
@@ -90,6 +94,7 @@ class Densenet4htr:
     start = time.time()
     self._build_graph()
     print('densenet feature extractor graph built in (sec): '+str(time.time()-start))
+    self._count_trainable_params()
     # self._initialize_session()
     # self._count_trainable_params()
 
@@ -114,15 +119,15 @@ class Densenet4htr:
   #   self.saver = tf.train.Saver()
   #   self.summary_writer = logswriter(self.logs_path)
 
-  # def _count_trainable_params(self):
-  #   total_parameters = 0
-  #   for variable in tf.trainable_variables():
-  #     shape = variable.get_shape()
-  #     variable_parametes = 1
-  #     for dim in shape:
-  #       variable_parametes *= dim.value
-  #     total_parameters += variable_parametes
-  #   print("Total training params: %.1fM" % (total_parameters / 1e6))
+  def _count_trainable_params(self):
+    total_parameters = 0
+    for variable in tf.trainable_variables():
+      shape = variable.get_shape()
+      variable_parametes = 1
+      for dim in shape:
+        variable_parametes *= dim.value
+      total_parameters += variable_parametes
+    print("Total training params: %.1fM" % (total_parameters / 1e6))
   #
   # @property
   # def save_path(self):
@@ -260,8 +265,8 @@ class Densenet4htr:
     output = self.composite_function(
       _input, out_features=out_features, kernel_size=1)
     # run average pooling
-    assert _input.shape[1]>=self.time_steps, 'input width is not correct' # ADDED BY RONNY
-    output = self.avg_pool(output, k=2, preserve_width=(_input.shape[1]==self.time_steps)) # ADDED BY RONNY
+    assert _input.shape[1]>=self.time_steps, 'input width is not correct' # todo ADDED BY RONNY
+    output = self.avg_pool(output, k=2, preserve_width=(_input.shape[1]==self.time_steps)) # todo ADDED BY RONNY
     return output
 
   def transition_layer_to_classes(self, _input):
@@ -297,10 +302,10 @@ class Densenet4htr:
     return output
 
   def avg_pool(self, _input, k, preserve_width=False, initial_conv=False):
-    if preserve_width: # ADDED BY RONNY
+    if preserve_width: # todo ADDED BY RONNY
       ksize = [1, 1, k, 1]
       strides = [1, 1, k, 1]
-    elif initial_conv: # ADDED BY RONNY
+    elif initial_conv: # todo ADDED BY RONNY
       ksize = [1, 3, 3, 1]
       strides = [1, 2, 2, 1]
     else:
@@ -311,10 +316,10 @@ class Densenet4htr:
     return output
 
   def max_pool(self, _input, k, preserve_width=False, initial_conv=False):
-    if preserve_width: # ADDED BY RONNY
+    if preserve_width: # todo ADDED BY RONNY
       ksize = [1, 1, k, 1]
       strides = [1, 1, k, 1]
-    elif initial_conv: # ADDED BY RONNY
+    elif initial_conv: # todo ADDED BY RONNY
       ksize = [1, 3, 3, 1]
       strides = [1, 2, 2, 1]
     else:
@@ -367,11 +372,11 @@ class Densenet4htr:
     with tf.variable_scope("Initial_convolution"):
       output = self.conv2d(
         # self.images,
-        self.inputTensor, # ADDED BY RONNY
+        self.inputTensor, # todo ADDED BY RONNY
         out_features=self.first_output_features,
         kernel_size=7) # MODIFIED BY RONNY
     with tf.variable_scope("Initial_convolution_maxpool"):
-      output = self.max_pool(output, k=2, initial_conv=True) # ADDED BY RONNY
+      output = self.max_pool(output, k=2, initial_conv=True) # todo ADDED BY RONNY
 
     # add N required blocks
     for block in range(self.total_blocks):
@@ -381,6 +386,16 @@ class Densenet4htr:
       if block != self.total_blocks - 1:
         with tf.variable_scope("Transition_after_block_%d" % block):
           output = self.transition_layer(output)
+
+    # global average pool that preserves width
+    with tf.variable_scope("global_pool"):
+      # BN
+      output = self.batch_norm(output)
+      # ReLU
+      output = tf.nn.relu(output)
+      # average pooling
+      last_pool_kernel = int(output.get_shape()[2])
+      output = self.avg_pool(output, k=last_pool_kernel, preserve_width=True)
 
     self.output = output
 
