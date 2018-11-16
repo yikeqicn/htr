@@ -40,7 +40,7 @@ parser.add_argument("--adam", help="adam optimizer", action="store_true")
 # trainset hyperparams
 parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
 parser.add_argument("--iam", help='use iam dataset', action='store_true')
-parser.add_argument("--datapath", default='/root/datasets/htr_assets/crowdsource/extracted/', type=str, help="data path if not using iam")
+parser.add_argument("--datapath", default='/root/datasets/htr_assets/crowdsource/processed/', type=str, help="data path if not using iam")
 # densenet hyperparams
 parser.add_argument("--nondensenet", help="noncustom (original) vanilla cnn", action="store_true")
 parser.add_argument("--growth_rate", default=12, type=int, help='growth rate (k)')
