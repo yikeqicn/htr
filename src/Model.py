@@ -29,7 +29,7 @@ class Model:
     self.rnndim = args.rnndim
 
     # Input
-    self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, Model.imgSize[0], Model.imgSize[1]))
+    self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, args.imgsize[0], args.imgsize[1]))
 
     # CNN
     if args.nondensenet:

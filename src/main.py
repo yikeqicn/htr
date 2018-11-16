@@ -30,6 +30,9 @@ parser.add_argument("--batchesTrained", default=0, type=int, help='number of bat
 # beam search
 parser.add_argument("--beamsearch", help="use beam search instead of best path decoding", action="store_true")
 parser.add_argument("--wordbeamsearch", help="use word beam search instead of best path decoding", action="store_true")
+# img size
+parser.add_argument("--imgsize", default=[128,32], type=int, nargs='+')
+parser.add_argument("--rnnsteps", default=32, type=int, help='number of desired time steps (image slices) to feed rnn')
 # basic hyperparams
 parser.add_argument("--batchsize", default=50, type=int, help='batch size')
 parser.add_argument("--lrInit", default=1e-2, type=float, help='initial learning rate')
@@ -43,7 +46,6 @@ parser.add_argument("--nondensenet", help="noncustom (original) vanilla cnn", ac
 parser.add_argument("--growth_rate", default=12, type=int, help='growth rate (k)')
 parser.add_argument("--layers_per_block", default=18, type=int, help='number of layers per block')
 parser.add_argument("--total_blocks", default=5, type=int, help='nuber of densenet blocks')
-parser.add_argument("--rnnsteps", default=48, type=int, help='number of desired time steps (image slices) to feed rnn')
 parser.add_argument("--keep_prob", default=1, type=float, help='keep probability in dropout')
 parser.add_argument("--reduction", default=0.4, type=float, help='reduction factor in 1x1 conv in transition layers')
 parser.add_argument("--bc_mode", default=True, type=bool, help="bottleneck and compresssion mode")
@@ -176,7 +178,7 @@ def main():
   # train or validate on IAM dataset
   if args.train or args.validate:
     # load training data, create TF model
-    loader = DataLoader(FilePaths.fnTrain, args.batchsize, Model.imgSize, Model.maxTextLen, args)
+    loader = DataLoader(FilePaths.fnTrain, args.batchsize, args.imgsize, Model.maxTextLen, args)
 
     # save characters of model for inference mode
     open(FilePaths.fnCharList, 'w').write(str().join(loader.charList))

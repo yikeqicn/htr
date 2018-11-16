@@ -45,6 +45,45 @@ def keep_aspect_pad(img, maxFactor):
   img = np.pad(img, padding, 'maximum')
   return img
 
+def remove_lines(img):
+  '''remove straight lines (of assumed infinite length) from image'''
+  img_copy = img.copy()
+  gray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
+
+  # gahther dimensions
+  largerDim = np.max(gray.shape)
+  origShape = gray.shape
+  sqrShape = [largerDim, largerDim]
+
+  gray = cv2.resize(gray, (largerDim, largerDim)) # resize to square image to ensure the votes count equally
+  # gray = cv2.GaussianBlur(gray,(3,3),0)
+
+  edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+  lines = cv2.HoughLines(edges, 2, 3 * np.pi / 180, threshold=300)
+  # plot(*np.squeeze(lines).T, '.'); show() # plot hough space
+
+  # apply lines to image
+  for rho, theta in np.squeeze(lines):
+
+    # calculate line enedpoints
+    a = np.cos(theta)
+    b = np.sin(theta)
+    x0 = a * rho
+    y0 = b * rho
+    x1 = int(x0 + 1000 * (-b))
+    y1 = int(y0 + 1000 * (a))
+    x2 = int(x0 - 1000 * (-b))
+    y2 = int(y0 - 1000 * (a))
+
+    # resize back down the endpoints to original image dimensions
+    x1 = int( x1 * origShape[1]/sqrShape[1] )
+    x2 = int( x2 * origShape[1]/sqrShape[1] )
+    y1 = int( y1 * origShape[0]/sqrShape[0] )
+    y2 = int( y2 * origShape[0]/sqrShape[0] )
+
+    # apply the line to the image
+    cv2.line(img_copy, (x1, y1), (x2, y2), (255, 255, 255), thickness=4)
+  return img_copy
 
 def preprocess(img, imgSize, args, dataAugmentation=False):
   "put img into target img of size imgSize, transpose for TF and normalize gray-values"
@@ -77,9 +116,9 @@ def preprocess(img, imgSize, args, dataAugmentation=False):
 
     if True: # dataAugmentation
     # ADDED by ronny
-    #   img = horizontal_stretch(img, minFactor=.5, maxFactor=1.5)
+      img = horizontal_stretch(img, minFactor=.7, maxFactor=1.5)
       img = target_aspect_pad(img, targetRatio=imgSize[1]/imgSize[0])
-      # img = keep_aspect_pad(img, maxFactor=1.5)
+      img = keep_aspect_pad(img, maxFactor=1.5)
 
     target = cv2.resize(img, imgSize, interpolation=cv2.INTER_CUBIC)
 
