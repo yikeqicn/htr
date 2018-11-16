@@ -45,45 +45,119 @@ def keep_aspect_pad(img, maxFactor):
   img = np.pad(img, padding, 'maximum')
   return img
 
-def remove_lines(img):
-  '''remove straight lines (of assumed infinite length) from image'''
-  img_copy = img.copy()
-  gray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
 
-  # gahther dimensions
+def clean_lines(img, threshold=.23):
+  '''use hough transnform to remove lines from the ey dataset'''
+  img_copy = img.copy()
+  if len(img.shape) > 2:
+    gray = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
+  else:
+    gray = img_copy.copy()
   largerDim = np.max(gray.shape)
   origShape = gray.shape
   sqrShape = [largerDim, largerDim]
 
-  gray = cv2.resize(gray, (largerDim, largerDim)) # resize to square image to ensure the votes count equally
-  # gray = cv2.GaussianBlur(gray,(3,3),0)
+  # image preprocessing for the hough transform
+  gray = cv2.resize(gray,
+                    (largerDim, largerDim))  # resize to be square so that votes for both horz and vert lines are equal
+  gray = cv2.GaussianBlur(gray, (5, 5), 0)
+  edges = cv2.Canny(gray, 50, 150, apertureSize=3)  # edge detection
+  # Image.fromarray(edges).show() # debug
 
-  edges = cv2.Canny(gray, 50, 150, apertureSize=3)
-  lines = cv2.HoughLines(edges, 2, 3 * np.pi / 180, threshold=300)
-  # plot(*np.squeeze(lines).T, '.'); show() # plot hough space
+  # apply hough transform
+  width = edges.shape[0]
+  thresholdPix = int(threshold * width)  # threshold is percentage of full image width expected to get votes
+  lines = cv2.HoughLines(edges, 1, 1 * np.pi / 180, threshold=thresholdPix)
 
-  # apply lines to image
+  # loop over detected lines in hough space and convert to euclidean
   for rho, theta in np.squeeze(lines):
-
-    # calculate line enedpoints
-    a = np.cos(theta)
-    b = np.sin(theta)
-    x0 = a * rho
-    y0 = b * rho
-    x1 = int(x0 + 1000 * (-b))
-    y1 = int(y0 + 1000 * (a))
-    x2 = int(x0 - 1000 * (-b))
-    y2 = int(y0 - 1000 * (a))
-
-    # resize back down the endpoints to original image dimensions
-    x1 = int( x1 * origShape[1]/sqrShape[1] )
-    x2 = int( x2 * origShape[1]/sqrShape[1] )
-    y1 = int( y1 * origShape[0]/sqrShape[0] )
-    y2 = int( y2 * origShape[0]/sqrShape[0] )
-
-    # apply the line to the image
-    cv2.line(img_copy, (x1, y1), (x2, y2), (255, 255, 255), thickness=4)
+    # leverage the fact that we know the lines occur at the borders of the image and are horz or vert
+    conditionTheta = (abs(180 / np.pi * theta - 0) < 3) | \
+                     (abs(180 / np.pi * theta - 90) < 3) | \
+                     (abs(180 / np.pi * theta - 180) < 3) | \
+                     (abs(180 / np.pi * theta - 270) < 3) | \
+                     (abs(180 / np.pi * theta - 360) < 3)
+    conditionRho = (abs(180 / np.pi * theta - 0) < 3) & (abs(rho - 0) < .07 * width) | \
+                   (abs(180 / np.pi * theta - 0) < 3) & (abs(rho - width) < .07 * width) | \
+                   (abs(180 / np.pi * theta - 0) < 3) & (abs(rho + width) < .07 * width) | \
+                   (abs(180 / np.pi * theta - 180) < 3) & (abs(rho - 0) < .07 * width) | \
+                   (abs(180 / np.pi * theta - 180) < 3) & (abs(rho - width) < .07 * width) | \
+                   (abs(180 / np.pi * theta - 180) < 3) & (abs(rho + width) < .07 * width) | \
+                   (abs(180 / np.pi * theta - 90) < 3) & (abs(rho - 0) < .2 * width) | \
+                   (abs(180 / np.pi * theta - 90) < 3) & (abs(rho - width) < .2 * width) | \
+                   (abs(180 / np.pi * theta - 90) < 3) & (abs(rho + width) < .2 * width)
+    # draw the lines
+    if conditionTheta & conditionRho:
+      # plot( rho, theta, 'or' , markersize=4) # debug
+      a = np.cos(theta)
+      b = np.sin(theta)
+      x0 = a * rho
+      y0 = b * rho
+      x1 = int(x0 + 1000 * (-b))
+      y1 = int(y0 + 1000 * (a))
+      x2 = int(x0 - 1000 * (-b))
+      y2 = int(y0 - 1000 * (a))
+      # scale back to original image size
+      x1 = int(x1 * origShape[1] / sqrShape[1])
+      x2 = int(x2 * origShape[1] / sqrShape[1])
+      y1 = int(y1 * origShape[0] / sqrShape[0])
+      y2 = int(y2 * origShape[0] / sqrShape[0])
+      cv2.line(img_copy, (x1, y1), (x2, y2), (255, 255, 255), thickness=14)
+    else:
+      # plot( rho, theta, '.b' , markersize=4) # debug
+      pass
   return img_copy
+
+
+def tight_crop(img, threshold=1 - 1.5e-2):
+  '''tightly crop an image, removing whitespace'''
+  img_copy = 255 - img
+  if len(img_copy.shape) > 2: img_copy = cv2.cvtColor(img_copy, cv2.COLOR_BGR2GRAY)
+  img_copy[img_copy > 20] = 255  # binarize
+  img_copy[img_copy <= 20] = 0
+  # Image.fromarray(img_copy).show() # debug
+  img_copy = cv2.erode(img_copy, np.ones((3, 3)))
+
+  # function: whiten the border given the crop coordinates
+  def clean_border(img, r1, r2, c1, c2, debug=False):
+    img_copy = img.copy()
+    if debug:
+      img_copy[:r1, :] = 125
+      img_copy[-r2:, :] = 125
+      img_copy[:, :c1] = 125
+      img_copy[:, -c2:] = 125
+    else:
+      img_copy[:r1, :] = 0
+      img_copy[-r2:, :] = 0
+      img_copy[:, :c1] = 0
+      img_copy[:, -c2:] = 0
+    return img_copy
+
+  # function: calculate ratio of preserved black pixels after the border cleaning
+  ratio_preserved = lambda crop: np.sum(clean_border(img_copy, crop[0], crop[1], crop[2], crop[3])) / np.sum(img_copy)
+
+  # iteratively crop more and more on each side alternatingly till preservedRatio hits threshold
+  crop = [0, 1, 0, 1]
+  edgeId = -1
+  subThreshold = 1
+  increment = .5e-3
+  while subThreshold >= threshold:
+    edgeId += 1
+    subThreshold -= increment
+    nextCrop = crop.copy()
+    while ratio_preserved(nextCrop) >= subThreshold:
+      crop = nextCrop.copy()
+      nextCrop[np.mod(edgeId, 4)] += 1
+    # Image.fromarray(clean_border(img_copy, crop[0], crop[1], crop[2], crop[3], debug=True)).show()
+    # print(crop, np.mod(edgeId,4), ratio_preserved(crop), subThreshold)
+
+  return img[crop[0]:-crop[1], crop[2]:-crop[3]]  # crop the image and return
+
+
+def center_pad(img, pad):
+  '''center crop the image by defining the amoiunt of negative padding to shrink'''
+  return img[pad:-pad, pad:-pad]
+
 
 def preprocess(img, imgSize, args, dataAugmentation=False):
   "put img into target img of size imgSize, transpose for TF and normalize gray-values"
@@ -114,10 +188,13 @@ def preprocess(img, imgSize, args, dataAugmentation=False):
 
   else:
 
-    if True: # dataAugmentation
-    # ADDED by ronny
+    if True:  # dataAugmentation
+      # ADDED by ronny
+      img = clean_lines(img)
+      img = tight_crop(img)
+      img = standardize(img)
       img = horizontal_stretch(img, minFactor=.7, maxFactor=1.5)
-      img = target_aspect_pad(img, targetRatio=imgSize[1]/imgSize[0])
+      img = target_aspect_pad(img, targetRatio=imgSize[1] / imgSize[0])
       img = keep_aspect_pad(img, maxFactor=1.5)
 
     target = cv2.resize(img, imgSize, interpolation=cv2.INTER_CUBIC)
@@ -133,4 +210,3 @@ def preprocess(img, imgSize, args, dataAugmentation=False):
   img = img / s if s > 0 else img
 
   return img
-
