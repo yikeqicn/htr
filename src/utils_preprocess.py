@@ -1,6 +1,6 @@
 import os
 from os.path import join, basename, dirname
-from numpy.random import choice, normal, rand
+from numpy.random import choice, normal, rand, randint
 from PIL import Image
 import numpy as np
 import cv2
@@ -16,6 +16,8 @@ crowdRoot = join(htrAssetsRoot, 'crowdsource')
 processedRoot = join(crowdRoot, 'processed')
 patchBoxesRoot = join(htrAssetsRoot, 'cropped_patches', 'nw_boxes-3')
 patchHorizRoot = join(htrAssetsRoot, 'cropped_patches', 'nw_horizontal-2')
+patchBoxesFiles = glob(join(patchBoxesRoot, '*.jpg'))
+patchHorizFiles = glob(join(patchHorizRoot, '*.jpg'))
 testsetRoot = join(htrAssetsRoot, 'nw_im_crop_curated')
 
 def clean_lines(img, threshold=.23):
@@ -214,8 +216,8 @@ def merge_patch(imBase, imPatch, centroid, threshold=100):
 
   # add difference of centroids to the x,y position of patch
   cc, rr = np.meshgrid(np.arange(ncp), np.arange(nrp))
-  rr = rr + delta[0]
-  cc = cc + delta[1]
+  rr = rr + int(delta[0])
+  cc = cc + int(delta[1])
 
   # remove all parts of patch image that would expand base image
   keep = reduce(np.logical_and, [rr >= 0, rr < nrb, cc >= 0, cc < ncb])
@@ -232,6 +234,7 @@ def merge_patch(imBase, imPatch, centroid, threshold=100):
 
 
 def merge_patch_box_random(img, centroid_std=.05):
+  imgSize = img.shape[::-1]
   imPatchFile = choice(patchBoxesFiles)
   imPatch = cv2.imread(imPatchFile, cv2.IMREAD_GRAYSCALE)
   imPatch = cv2.resize(imPatch, img.shape[::-1])
@@ -241,6 +244,8 @@ def merge_patch_box_random(img, centroid_std=.05):
 
 
 def merge_patch_horiz_random(img, centroid_std=.05):
+  imgSize = img.shape[::-1]
+  imPatchFile = choice(patchBoxesFiles)
   imPatchFile = choice(patchHorizFiles)
   imPatch = cv2.imread(imPatchFile, cv2.IMREAD_GRAYSCALE)
   imPatch = cv2.resize(imPatch, None, fx=4, fy=1)

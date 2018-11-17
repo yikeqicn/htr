@@ -6,8 +6,9 @@ import os
 from os.path import join, basename, dirname
 from glob import glob
 from src.SamplePreprocessor import horizontal_stretch, keep_aspect_pad, target_aspect_pad
-from src.utils_augment import merge_patch
 from numpy.random import choice, normal, rand
+from utils_preprocess import *
+
 imshow = lambda im: Image.fromarray(im).show()
 home = os.environ['HOME']
 

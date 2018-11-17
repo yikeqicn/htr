@@ -21,7 +21,7 @@ class Batch:
 class DataLoader:
   "loads data which corresponds to IAM format, see: http://www.fki.inf.unibe.ch/databases/iam-handwriting-database"
 
-  def __init__(self, filePath, batchSize, imgSize, maxTextLen, args):
+  def __init__(self, filePath, batchSize, imgSize, maxTextLen, args, is_test=False):
     "loader for dataset at given location, preprocess images and text according to parameters"
 
     assert filePath[-1] == '/'
@@ -59,18 +59,22 @@ class DataLoader:
 
     else:
       # MODIFIED HERE FOR OUR CUSTOM DATASET
-      fileName = glob(join(filePath, '*/*.jpg'))
+      fileName = glob(join(filePath, '**/*.jpg'), recursive=True)
       gtText = [os.path.basename(f)[:-4] for f in fileName]
       chars = set.union(*[set(t) for t in gtText])
       self.samples = [Sample(g,f) for g,f in zip(gtText, fileName)]
 
     # split into training and validation set: 95% - 5%
-    random.shuffle(self.samples)
-    splitIdx = int(0.90 * len(self.samples))
-    self.trainSamples = self.samples[:splitIdx]
-    self.validationSamples = self.samples[splitIdx:]
-    print("Number of train/valid samples: ", len(self.trainSamples), ",", len(self.validationSamples))
-    print('Batch size: '+str(self.batchSize))
+    if not is_test:
+      random.shuffle(self.samples)
+      splitIdx = int(0.90 * len(self.samples))
+      self.trainSamples = self.samples[:splitIdx]
+      self.validationSamples = self.samples[splitIdx:]
+      print("Number of train/valid samples: ", len(self.trainSamples), ",", len(self.validationSamples))
+    else:
+      self.trainSamples = []
+      self.validationSamples = [sample for sample in self.samples if sample.gtText.find('-')==-1] # remove samples with hyphens since model isnt trained on that
+      print("Number of test samples: ", len(self.validationSamples))
 
     # put words into lists
     self.trainWords = [x.gtText for x in self.trainSamples]

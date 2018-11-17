@@ -4,7 +4,7 @@ import cv2
 from matplotlib.pyplot import plot, imshow, colorbar, show, axis
 from numpy.random import randint
 import os
-from utils_preprocess import *
+from src.utils_preprocess import *
 
 def preprocess(img, imgSize, args, dataAugmentation=False):
   "put img into target img of size imgSize, transpose for TF and normalize gray-values"
@@ -35,16 +35,15 @@ def preprocess(img, imgSize, args, dataAugmentation=False):
 
   else:
 
-    if True:  # dataAugmentation
-
+    if dataAugmentation:
       img = horizontal_stretch(img, minFactor=.5, maxFactor=1.5)
       img = target_aspect_pad(img, targetRatio=imgSize[1] / imgSize[0])
       img = keep_aspect_pad(img, maxFactor=1.2)
-      img = cv2.resize(img, imgSize, interpolation=cv2.INTER_CUBIC)
-      if rand() < .90: img = merge_patch_box_random(img, centroid_std=.1)
+      img = cv2.resize(img, tuple(imgSize), interpolation=cv2.INTER_CUBIC)
+      if rand() < .70: img = merge_patch_box_random(img, centroid_std=.025)
       else: img = merge_patch_horiz_random(img, centroid_std=.05)
 
-    target = cv2.resize(img, imgSize, interpolation=cv2.INTER_CUBIC)
+  target = cv2.resize(img, tuple(imgSize), interpolation=cv2.INTER_CUBIC)
 
   # transpose for TF
   img = cv2.transpose(target)

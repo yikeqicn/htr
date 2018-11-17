@@ -25,7 +25,7 @@ parser.add_argument("--name", default='debug', type=str, help="name of the log")
 parser.add_argument("--gpu", default='0', type=str, help="gpu numbers")
 parser.add_argument("--train", help="train the NN", action="store_true")
 parser.add_argument("--validate", help="validate the NN", action="store_true")
-parser.add_argument("--transfer_from", default=None, type=str, help="name of pretrained model for transfer learning")
+parser.add_argument("--transfer_from", default='/root/ckpt/adam-lr1e-2', type=str, help="name of pretrained model for transfer learning")
 parser.add_argument("--batchesTrained", default=0, type=int, help='number of batches already trained (for lr schedule)')
 # beam search
 parser.add_argument("--beamsearch", help="use beam search instead of best path decoding", action="store_true")
@@ -40,7 +40,8 @@ parser.add_argument("--adam", help="adam optimizer", action="store_true")
 # trainset hyperparams
 parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
 parser.add_argument("--iam", help='use iam dataset', action='store_true')
-parser.add_argument("--datapath", default='/root/datasets/htr_assets/crowdsource/processed/', type=str, help="data path if not using iam")
+parser.add_argument("--datapath", default='/root/datasets/htr_assets/crowdsource/processed/', type=str, help="train/valid path if not using iam")
+parser.add_argument("--testpath", default='/root/datasets/htr_assets/nw_im_crop_curated/', type=str, help="test path ")
 # densenet hyperparams
 parser.add_argument("--nondensenet", help="noncustom (original) vanilla cnn", action="store_true")
 parser.add_argument("--growth_rate", default=12, type=int, help='growth rate (k)')
@@ -80,7 +81,7 @@ class FilePaths:
   if args.iam: fnTrain = join(home, 'datasets/iam_handwriting/')
   fnInfer = join(home, 'datasets', 'htr_debug', 'trainbold.png')
 
-def train(model, loader):
+def train(model, loader, testloader=None):
   "train NN"
   epoch = 0  # number of training epochs since start
   bestCharErrorRate = float('inf')  # best valdiation character error rate
@@ -111,6 +112,12 @@ def train(model, loader):
     experiment.log_metric('valid/cer', charErrorRate, step)
     experiment.log_metric('valid/wer', 1-wordAccuracy, step)
 
+    # test
+    if testloader!=None:
+      charErrorRate, wordAccuracy= validate(model, testloader, epoch, is_testing=True)
+      experiment.log_metric('test/cer', charErrorRate, step)
+      experiment.log_metric('test/wer', 1-wordAccuracy, step)
+
     # if best validation accuracy so far, save model parameters
     if charErrorRate < bestCharErrorRate:
       print('Character error rate improved, save model')
@@ -129,9 +136,10 @@ def train(model, loader):
       break
 
 
-def validate(model, loader, epoch):
+def validate(model, loader, epoch, is_testing=False):
   "validate NN"
-  print('Validate NN')
+  if not is_testing: print('Validating NN')
+  else: print('Testing NN')
   loader.validationSet()
   numCharErr, numCharTotal, numWordOK, numWordTotal = 0, 0, 0, 0
   plt.figure(figsize=(6,2))
@@ -148,7 +156,7 @@ def validate(model, loader, epoch):
       numCharTotal += len(batch.gtTexts[i])
       if counter<10: # log images
         text = ' '.join(['[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + batch.gtTexts[i] + '"', '->', '"' + recognized[i] + '"'])
-        utils.log_image(experiment, batch, text, 'valid', ckptpath, counter, epoch)
+        utils.log_image(experiment, batch, text, 'test' if is_testing else 'valid', ckptpath, counter, epoch)
         counter += 1
 
   # print validation result
@@ -179,6 +187,7 @@ def main():
   if args.train or args.validate:
     # load training data, create TF model
     loader = DataLoader(FilePaths.fnTrain, args.batchsize, args.imgsize, Model.maxTextLen, args)
+    testloader = DataLoader(args.testpath, args.batchsize, args.imgsize, Model.maxTextLen, args, is_test=True)
 
     # save characters of model for inference mode
     open(FilePaths.fnCharList, 'w').write(str().join(loader.charList))
@@ -189,7 +198,7 @@ def main():
     # execute training or validation
     if args.train:
       model = Model(args, loader.charList, decoderType, FilePaths=FilePaths)
-      train(model, loader)
+      train(model, loader, testloader)
     elif args.validate:
       model = Model(args, loader.charList, decoderType, mustRestore=True, FilePaths=FilePaths)
       validate(model, loader)
