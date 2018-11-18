@@ -68,10 +68,6 @@ ckptpath = join(ckptroot, args.name)
 if args.name=='debug': shutil.rmtree(ckptpath, ignore_errors=True)
 os.makedirs(ckptpath, exist_ok=True)
 
-# SigOpt
-from sigopt import Connection
-conn = Connection(client_token="FJUVRFEZUNYVIMTPCJLSGKOSDNSNTFSDITMBVMZRKZRRVREL")
-
 # chublet
 class FilePaths:
   "filenames and paths to data"
