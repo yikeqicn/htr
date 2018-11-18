@@ -4,9 +4,9 @@ import cv2
 from matplotlib.pyplot import plot, imshow, colorbar, show, axis
 from numpy.random import randint
 import os
-from src.utils_preprocess import *
+from utils_preprocess import *
 
-def preprocess(img, imgSize, args, dataAugmentation=False):
+def preprocess(img, imgSize, args, dataAugmentation=False, is_testing=False):
   "put img into target img of size imgSize, transpose for TF and normalize gray-values"
 
   # there are damaged files in IAM dataset - just use black image instead
@@ -36,12 +36,23 @@ def preprocess(img, imgSize, args, dataAugmentation=False):
   else:
 
     if dataAugmentation:
+
+      # padding
       img = horizontal_stretch(img, minFactor=.5, maxFactor=1.5)
       img = target_aspect_pad(img, targetRatio=imgSize[1] / imgSize[0])
-      img = keep_aspect_pad(img, maxFactor=1.2)
-      img = cv2.resize(img, tuple(imgSize), interpolation=cv2.INTER_CUBIC)
-      if rand() < .70: img = merge_patch_box_random(img, centroid_std=.025)
-      else: img = merge_patch_horiz_random(img, centroid_std=.05)
+      img = keep_aspect_pad(img, maxFactor=1.1)
+
+      # artifact corruption
+      if not args.noartifact:
+        img = cv2.resize(img, tuple(imgSize), interpolation=cv2.INTER_CUBIC)
+        if rand() < .70: img = merge_patch_box_random(img, centroid_std=.03)
+        else: img = merge_patch_horiz_random(img, centroid_std=.05)
+
+  # crop out more edges to get rid of artifacts there
+  # if is_testing:
+  if True:
+    img = cv2.resize(img, tuple(imgSize), interpolation=cv2.INTER_CUBIC)
+    img = img[3:28, 10:115]
 
   target = cv2.resize(img, tuple(imgSize), interpolation=cv2.INTER_CUBIC)
 

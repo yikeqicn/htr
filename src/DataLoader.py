@@ -110,11 +110,11 @@ class DataLoader:
     "iterator"
     return self.currIdx + self.batchSize <= len(self.samples)
 
-  def getNext(self):
+  def getNext(self, is_testing=False):
     "iterator"
     batchRange = range(self.currIdx, self.currIdx + self.batchSize)
     gtTexts = [self.samples[i].gtText for i in batchRange]
     imgs = [preprocess(cv2.imread(self.samples[i].filePath, cv2.IMREAD_GRAYSCALE),
-                       self.imgSize, self.args, self.dataAugmentation) for i in batchRange]
+                       self.imgSize, self.args, self.dataAugmentation, is_testing) for i in batchRange]
     self.currIdx += self.batchSize
     return Batch(gtTexts, imgs)

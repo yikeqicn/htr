@@ -39,6 +39,7 @@ parser.add_argument("--lrInit", default=1e-2, type=float, help='initial learning
 parser.add_argument("--adam", help="adam optimizer", action="store_true")
 # trainset hyperparams
 parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
+parser.add_argument("--noartifact", help="dont insert artifcats", action="store_true")
 parser.add_argument("--iam", help='use iam dataset', action='store_true')
 parser.add_argument("--datapath", default='/root/datasets/htr_assets/crowdsource/processed/', type=str, help="train/valid path if not using iam")
 parser.add_argument("--testpath", default='/root/datasets/htr_assets/nw_im_crop_curated/', type=str, help="test path ")
@@ -67,11 +68,15 @@ ckptpath = join(ckptroot, args.name)
 if args.name=='debug': shutil.rmtree(ckptpath, ignore_errors=True)
 os.makedirs(ckptpath, exist_ok=True)
 
+# SigOpt
+from sigopt import Connection
+conn = Connection(client_token="FJUVRFEZUNYVIMTPCJLSGKOSDNSNTFSDITMBVMZRKZRRVREL")
+
 # chublet
 class FilePaths:
   "filenames and paths to data"
   fnCkptpath = ckptpath
-  fnTransferFrom = join(ckptroot, args.transfer_from) if args.transfer_from!=None else None
+  fnTransferFrom = join(ckptroot, args.transfer_from) if args.transfer_from!='' else None
   fnCharList = join(ckptpath, 'charList.txt')
   fnCorpus = join(ckptpath, 'corpus.txt')
   fnAccuracy = join(ckptpath, 'accuracy.txt')
@@ -144,9 +149,10 @@ def validate(model, loader, epoch, is_testing=False):
   numCharErr, numCharTotal, numWordOK, numWordTotal = 0, 0, 0, 0
   plt.figure(figsize=(6,2))
   counter = 0
+  n_log = 20 if is_testing else 10
   while loader.hasNext():
     iterInfo = loader.getIteratorInfo()
-    batch = loader.getNext()
+    batch = loader.getNext(is_testing)
     recognized = model.inferBatch(batch)
     for i in range(len(recognized)):
       numWordOK += 1 if batch.gtTexts[i] == recognized[i] else 0
@@ -154,7 +160,7 @@ def validate(model, loader, epoch, is_testing=False):
       dist = editdistance.eval(recognized[i], batch.gtTexts[i])
       numCharErr += dist
       numCharTotal += len(batch.gtTexts[i])
-      if counter<10: # log images
+      if counter<n_log: # log images
         text = ' '.join(['[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + batch.gtTexts[i] + '"', '->', '"' + recognized[i] + '"'])
         utils.log_image(experiment, batch, text, 'test' if is_testing else 'valid', ckptpath, counter, epoch)
         counter += 1
