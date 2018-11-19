@@ -13,7 +13,7 @@ class Objective(object):
        'bounds': {'min': 1e-5, 'max': 5e-1},
        },
       {'name': 'optimizer',
-       'type': 'double',
+       'type': 'categorical',
        'bounds': {'min': -70.0, 'max': 70.0},
        },
     ]
