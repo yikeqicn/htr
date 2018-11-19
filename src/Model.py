@@ -41,15 +41,20 @@ class Model:
     rnnOut3d = self.setupRNN(cnnOut4d)
 
     # CTC
-    (self.loss, self.decoder) = self.setupCTC(rnnOut3d)
+    (self.ctcloss, self.decoder) = self.setupCTC(rnnOut3d)
+
+    # explicit regularizers
+    self.loss = self.ctcloss + args.wdec
 
     # optimizer for NN parameters
     self.batchesTrained = args.batchesTrained
     self.learningRate = tf.placeholder(tf.float32, shape=[])
-    if args.adam:
-      self.optimizer = tf.train.RMSPropOptimizer(self.learningRate).minimize(self.loss)
-    else:
-      self.optimizer = tf.train.AdamOptimizer(self.learningRate).minimize(self.loss)
+    if args.optimizer=='rmsprop':
+      self.optimizer = tf.train.RMSPropOptimizer(self.learningRate).minimize(self.ctcloss)
+    elif args.optimizer=='adam':
+      self.optimizer = tf.train.AdamOptimizer(self.learningRate).minimize(self.ctcloss)
+    elif args.optimizer=='momentum':
+      self.optimizer = tf.train.MomentumOptimizer(self.learningRate, .9).minimize(self.ctcloss)
 
     # initialize TF
     (self.sess, self.saver) = self.setupTF()
@@ -234,11 +239,11 @@ class Model:
     sparse = self.toSparse(batch.gtTexts)
     lrnrate = self.lrInit if self.batchesTrained < 10 else (
       self.lrInit*1e-1 if self.batchesTrained < 10000 else self.lrInit*1e-2)  # decay learning rate
-    (_, lossVal) = self.sess.run([self.optimizer, self.loss], {self.inputImgs: batch.imgs,
-                                                               self.gtTexts: sparse,
-                                                               self.seqLen: [Model.maxTextLen] * self.batchsize,
-                                                               self.learningRate: lrnrate,
-                                                               self.is_training: True})
+    (_, lossVal) = self.sess.run([self.optimizer, self.ctcloss], {self.inputImgs: batch.imgs,
+                                                                  self.gtTexts: sparse,
+                                                                  self.seqLen: [Model.maxTextLen] * self.batchsize,
+                                                                  self.learningRate: lrnrate,
+                                                                  self.is_training: True})
     self.batchesTrained += 1
     return lossVal
 

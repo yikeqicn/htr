@@ -36,7 +36,7 @@ parser.add_argument("--rnnsteps", default=32, type=int, help='number of desired 
 # basic hyperparams
 parser.add_argument("--batchsize", default=50, type=int, help='batch size')
 parser.add_argument("--lrInit", default=1e-2, type=float, help='initial learning rate')
-parser.add_argument("--adam", help="adam optimizer", action="store_true")
+parser.add_argument("--optimizer", default='rmsprop', help="adam, rmsprop, momentum")
 # trainset hyperparams
 parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
 parser.add_argument("--noartifact", help="dont insert artifcats", action="store_true")

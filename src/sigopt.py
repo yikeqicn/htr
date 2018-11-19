@@ -8,11 +8,11 @@ class Objective(object):
 
   def __init__(self):
     self.parameters = [
-      {'': 'x1',
+      {'name': 'lrInit',
        'type': 'double',
-       'bounds': {'min': -70.0, 'max': 70.0},
+       'bounds': {'min': 1e-5, 'max': 5e-1},
        },
-      {'name': 'x2',
+      {'name': 'optimizer',
        'type': 'double',
        'bounds': {'min': -70.0, 'max': 70.0},
        },
