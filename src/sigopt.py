@@ -8,9 +8,7 @@ class Objective(object):
 
   def __init__(self):
     self.parameters = [
-      {'name': 'lrInit',
-       'type': 'double',
-       'bounds': {'min': 1e-5, 'max': 5e-1},
+      {'name': 'lrInit', 'type': 'double', 'bounds': {'min': 1e-5, 'max': 5e-1},
        },
       {'name': 'optimizer',
        'type': 'categorical',
