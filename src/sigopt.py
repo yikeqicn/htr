@@ -8,7 +8,7 @@ class Objective(object):
 
   def __init__(self):
     self.parameters = [
-      {'name': 'x1',
+      {'': 'x1',
        'type': 'double',
        'bounds': {'min': -70.0, 'max': 70.0},
        },
@@ -20,7 +20,9 @@ class Objective(object):
 
   @staticmethod
   def evaluate(params):
-    subprocess.run('python main.py',)
+    command = ['python main.py']+['--'+k+'='+str(v) for k,v in params.items()]
+    subprocess.run(command)
+)
 
 obj = Objective()
 conn = sigopt.Connection(client_token="FJUVRFEZUNYVIMTPCJLSGKOSDNSNTFSDITMBVMZRKZRRVREL")
@@ -28,7 +30,7 @@ conn = sigopt.Connection(client_token="FJUVRFEZUNYVIMTPCJLSGKOSDNSNTFSDITMBVMZRK
 experiment = conn.experiments().create(
   name='htr-first',
   parameters=obj.parameters,
-  observation_budget=40,
+  observation_budget=10*len(self.parameters),
 )
 
 print("Sigopt experiment at https://sigopt.com/experiment/{0}".format(experiment.id))
