@@ -22,6 +22,7 @@ home = os.environ['HOME']
 # basic operations
 parser = argparse.ArgumentParser()
 parser.add_argument("--name", default='debug', type=str, help="name of the log")
+parser.add_argument("--nameid", default='', type=str, help="name metadata from parallel threaded runs")
 parser.add_argument("--gpu", default='0', type=str, help="gpu numbers")
 parser.add_argument("--train", help="train the NN", action="store_true")
 parser.add_argument("--validate", help="validate the NN", action="store_true")
@@ -35,6 +36,9 @@ parser.add_argument("--batchsize", default=50, type=int, help='batch size')
 parser.add_argument("--lrInit", default=1e-2, type=float, help='initial learning rate')
 parser.add_argument("--optimizer", default='rmsprop', help="adam, rmsprop, momentum")
 parser.add_argument("--wdec", default=1e-4, type=float, help='weight decay')
+parser.add_argument("--lrDrop1", default=10, type=int, help='step to drop lr by 10 first time')
+parser.add_argument("--lrDrop2", default=1000, type=int, help='step to drop lr by 10 sexond time')
+parser.add_argument("--epochEnd", default=50, type=int, help='step to drop lr by 10 sexond time')
 # trainset hyperparams
 parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
 parser.add_argument("--noartifact", help="dont insert artifcats", action="store_true")
@@ -61,15 +65,16 @@ parser.add_argument("--crop_c1", default=10, type=int)
 parser.add_argument("--crop_c2", default=115, type=int)
 args = parser.parse_args()
 
-open('commands.log','a').write('nohup python '+' '.join(sys.argv)+' &\n') # write command to the log
+open('/root/commands.log','a').write('nohup python '+' '.join(sys.argv)+' &\n') # write command to the log
 
-experiment.set_name(args.name)
+name = args.name if args.nameid=='' else args.name+'-'+args.nameid
+experiment.set_name(name)
 experiment.log_multiple_params(vars(args))
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 reporoot = join(home, 'repo')
 ckptroot = join(home, 'ckpt')
-ckptpath = join(ckptroot, args.name)
+ckptpath = join(ckptroot, name)
 if args.name=='debug': shutil.rmtree(ckptpath, ignore_errors=True)
 os.makedirs(ckptpath, exist_ok=True)
 
@@ -144,7 +149,7 @@ def train(model, loader, testloader=None):
     # if noImprovementSince >= earlyStopping:
     #   print('No more improvement since %d epochs. Training stopped.' % earlyStopping)
     #   break
-    if epoch>=50: print('Done with training at epoch', epoch, 'bestCharErrorRate='+str(bestCharErrorRate)); break
+    if epoch>=args.epochEnd: print('Done with training at epoch', epoch, 'bestCharErrorRate='+str(bestCharErrorRate)); break
 
 
 def validate(model, loader, epoch, is_testing=False):

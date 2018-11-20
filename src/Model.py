@@ -1,3 +1,4 @@
+import numpy as np
 import sys
 import tensorflow as tf
 from os.path import join
@@ -26,7 +27,8 @@ class Model:
     self.FilePaths = FilePaths
     self.batchsize = args.batchsize
     self.lrInit = args.lrInit
-    self.rnndim = args.rnndim
+    self.args = args
+
 
     # Input
     self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, args.imgsize[0], args.imgsize[1]))
@@ -245,8 +247,8 @@ class Model:
   def trainBatch(self, batch):
     "feed a batch into the NN to train it"
     sparse = self.toSparse(batch.gtTexts)
-    lrnrate = self.lrInit if self.batchesTrained < 10 else (
-      self.lrInit*1e-1 if self.batchesTrained < 10000 else self.lrInit*1e-2)  # decay learning rate
+    lrnrate = self.lrInit if self.batchesTrained < self.args.lrDrop1 else (
+      self.lrInit*1e-1 if self.batchesTrained < self.args.lrDrop2 else self.lrInit*1e-2)  # decay learning rate
     (_, lossVal) = self.sess.run([self.optimizer, self.loss], {self.inputImgs: batch.imgs,
                                                                   self.gtTexts: sparse,
                                                                   self.seqLen: [Model.maxTextLen] * self.batchsize,
