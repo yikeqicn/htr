@@ -30,13 +30,11 @@ parser.add_argument("--batchesTrained", default=0, type=int, help='number of bat
 # beam search
 parser.add_argument("--beamsearch", help="use beam search instead of best path decoding", action="store_true")
 parser.add_argument("--wordbeamsearch", help="use word beam search instead of best path decoding", action="store_true")
-# img size
-parser.add_argument("--imgsize", default=[128,32], type=int, nargs='+')
-parser.add_argument("--rnnsteps", default=32, type=int, help='number of desired time steps (image slices) to feed rnn')
-# basic hyperparams
+# training hyperparams
 parser.add_argument("--batchsize", default=50, type=int, help='batch size')
 parser.add_argument("--lrInit", default=1e-2, type=float, help='initial learning rate')
 parser.add_argument("--optimizer", default='rmsprop', help="adam, rmsprop, momentum")
+parser.add_argument("--wdec", default=1e-4, type=float, help='weight decay')
 # trainset hyperparams
 parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
 parser.add_argument("--noartifact", help="dont insert artifcats", action="store_true")
@@ -53,9 +51,16 @@ parser.add_argument("--reduction", default=0.4, type=float, help='reduction fact
 parser.add_argument("--bc_mode", default=True, type=bool, help="bottleneck and compresssion mode")
 # rnn hyperparams
 parser.add_argument("--rnndim", default=256, type=int, help='rnn dimenstionality')
+parser.add_argument("--rnnsteps", default=32, type=int, help='number of desired time steps (image slices) to feed rnn')
+# img size
+parser.add_argument("--imgsize", default=[128,32], type=int, nargs='+')
+# testset crop
+parser.add_argument("--crop_r1", default=3, type=int)
+parser.add_argument("--crop_r2", default=28, type=int)
+parser.add_argument("--crop_c1", default=10, type=int)
+parser.add_argument("--crop_c2", default=115, type=int)
 args = parser.parse_args()
-# with open('commands.log', 'a') as f:
-#   f.write(['nohup python '+' '.join(sys.argv)+' &\n']) # write command to the log
+
 open('commands.log','a').write('nohup python '+' '.join(sys.argv)+' &\n') # write command to the log
 
 experiment.set_name(args.name)
@@ -85,7 +90,7 @@ class FilePaths:
 def train(model, loader, testloader=None):
   "train NN"
   epoch = 0  # number of training epochs since start
-  bestCharErrorRate = float('inf')  # best valdiation character error rate
+  bestCharErrorRate = bestWordErrorRate = float('inf')  # best valdiation character error rate
   noImprovementSince = 0  # number of epochs no improvement of character error rate occured
   earlyStopping = 12  # stop training after this number of epochs without improvement
   while True:
@@ -130,11 +135,16 @@ def train(model, loader, testloader=None):
     else:
       print('Character error rate not improved')
       noImprovementSince += 1
+    if 1-wordAccuracy < bestWordErrorRate:
+      bestWordErrorRate = 1-wordAccuracy
+    experiment.log_metric('best/cer', bestCharErrorRate, step)
+    experiment.log_metric('best/wer', bestWordErrorRate, step)
 
-    # stop training if no more improvement in the last x epochs
-    if noImprovementSince >= earlyStopping:
-      print('No more improvement since %d epochs. Training stopped.' % earlyStopping)
-      break
+    # # stop training if no more improvement in the last x epochs
+    # if noImprovementSince >= earlyStopping:
+    #   print('No more improvement since %d epochs. Training stopped.' % earlyStopping)
+    #   break
+    if epoch>=50: print('Done with training at epoch', epoch, 'bestCharErrorRate='+str(bestCharErrorRate)); break
 
 
 def validate(model, loader, epoch, is_testing=False):

@@ -52,7 +52,7 @@ def preprocess(img, imgSize, args, dataAugmentation=False, is_testing=False):
   # if is_testing:
   if True:
     img = cv2.resize(img, tuple(imgSize), interpolation=cv2.INTER_CUBIC)
-    img = img[3:28, 10:115]
+    img = img[args.crop_r1:args.crop_r2, args.crop_c1:args.crop_c2]
 
   target = cv2.resize(img, tuple(imgSize), interpolation=cv2.INTER_CUBIC)
 

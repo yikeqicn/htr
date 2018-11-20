@@ -43,18 +43,18 @@ class Model:
     # CTC
     (self.ctcloss, self.decoder) = self.setupCTC(rnnOut3d)
 
-    # explicit regularizers
-    self.loss = self.ctcloss + args.wdec
+    # Explicit regularizers
+    self.loss = self.ctcloss + args.wdec * self.setupWdec(args)
 
     # optimizer for NN parameters
     self.batchesTrained = args.batchesTrained
     self.learningRate = tf.placeholder(tf.float32, shape=[])
     if args.optimizer=='rmsprop':
-      self.optimizer = tf.train.RMSPropOptimizer(self.learningRate).minimize(self.ctcloss)
+      self.optimizer = tf.train.RMSPropOptimizer(self.learningRate).minimize(self.loss)
     elif args.optimizer=='adam':
-      self.optimizer = tf.train.AdamOptimizer(self.learningRate).minimize(self.ctcloss)
+      self.optimizer = tf.train.AdamOptimizer(self.learningRate).minimize(self.loss)
     elif args.optimizer=='momentum':
-      self.optimizer = tf.train.MomentumOptimizer(self.learningRate, .9).minimize(self.ctcloss)
+      self.optimizer = tf.train.MomentumOptimizer(self.learningRate, .9).minimize(self.loss)
 
     # initialize TF
     (self.sess, self.saver) = self.setupTF()
@@ -151,6 +151,14 @@ class Model:
     # return a CTC operation to compute the loss and a CTC operation to decode the RNN output
     return (tf.reduce_mean(loss), decoder)
 
+  def setupWdec(self, args):
+    """L2 weight decay loss."""
+    costs = []
+    for var in tf.trainable_variables(): # all weights count toward weight decay except batchnorm and biases
+      if var.op.name.find(r'BatchNorm') == -1 & var.op.name.find(r'bias:0')==-1:
+        costs.append(tf.nn.l2_loss(var))
+    return tf.add_n(costs)
+
   def setupTF(self):
     "initialize TF"
     print('Python: ' + sys.version)
@@ -239,7 +247,7 @@ class Model:
     sparse = self.toSparse(batch.gtTexts)
     lrnrate = self.lrInit if self.batchesTrained < 10 else (
       self.lrInit*1e-1 if self.batchesTrained < 10000 else self.lrInit*1e-2)  # decay learning rate
-    (_, lossVal) = self.sess.run([self.optimizer, self.ctcloss], {self.inputImgs: batch.imgs,
+    (_, lossVal) = self.sess.run([self.optimizer, self.loss], {self.inputImgs: batch.imgs,
                                                                   self.gtTexts: sparse,
                                                                   self.seqLen: [Model.maxTextLen] * self.batchsize,
                                                                   self.learningRate: lrnrate,
