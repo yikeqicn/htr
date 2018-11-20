@@ -5,6 +5,7 @@ from SamplePreprocessor import preprocess
 from glob import glob
 from os.path import join
 import os
+from os.path import join, basename, dirname
 
 class Sample:
   "sample from the dataset"
@@ -60,14 +61,16 @@ class DataLoader:
     else:
       # MODIFIED HERE FOR OUR CUSTOM DATASET
       fileName = glob(join(filePath, '**/*.jpg'), recursive=True)
-      gtText = [os.path.basename(f)[:-4] for f in fileName]
+      if not is_test: fileName = fileName + glob(join('/root/datasets/htr_assets/nw_empty_patches', '*.jpg')[:200])
+      else:           fileName = fileName + glob(join('/root/datasets/htr_assets/nw_empty_patches', '*.jpg')[200:])
+      gtText = [basename(f)[:-4] for f in fileName if basename(f).find('empty-')==-1 else ''] # if filename has 'empty-', then the gt is ''
       chars = set.union(*[set(t) for t in gtText])
       self.samples = [Sample(g,f) for g,f in zip(gtText, fileName)]
 
     # split into training and validation set: 95% - 5%
     if not is_test:
       random.shuffle(self.samples)
-      splitIdx = int(0.90 * len(self.samples))
+      splitIdx = int(0.95 * len(self.samples))
       self.trainSamples = self.samples[:splitIdx]
       self.validationSamples = self.samples[splitIdx:]
       print("Number of train/valid samples: ", len(self.trainSamples), ",", len(self.validationSamples))

@@ -3,6 +3,7 @@ import sys
 import tensorflow as tf
 from os.path import join
 from Densenet4htr import Densenet4htr
+import utils
 
 class DecoderType:
   BestPath = 0
@@ -184,11 +185,16 @@ class Model:
       print('Init with new values')
       sess.run(tf.global_variables_initializer())
 
-    if self.FilePaths.fnTransferFrom!=None: # ADDED BY RONNY initialize params from other model (transfer learning)
+    if self.FilePaths.urlTransferFrom!=None: # ADDED BY RONNY initialize params from other model (transfer learning)
 
+      utils.maybe_download(source_url=self.FilePaths.urlTransferFrom,
+                           filename=self.FilePaths.fnCkptpath,
+                           target_directory=None,
+                           filetype='folder',
+                           force=True)
       saverTransfer = tf.train.Saver(tf.trainable_variables()[:-1])  # load all variables except from logit (classification) layer
-      latestSnapshot = tf.train.latest_checkpoint(self.FilePaths.fnTransferFrom)  # is there a saved model?
-      if not latestSnapshot: raise Exception('No TransferFrom saved model in '+self.FilePaths.fnTransferFrom)
+      latestSnapshot = tf.train.latest_checkpoint(self.FilePaths.fnCkptpath)  # is there a saved model?
+      if not latestSnapshot: raise Exception('No TransferFrom saved model in '+self.FilePaths.urlTransferFrom)
       print('Init with stored values (except logit layer) from ' + latestSnapshot)
       saverTransfer.restore(sess, latestSnapshot)
 

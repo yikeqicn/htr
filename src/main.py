@@ -26,7 +26,7 @@ parser.add_argument("--nameid", default='', type=str, help="name metadata from p
 parser.add_argument("--gpu", default='0', type=str, help="gpu numbers")
 parser.add_argument("--train", help="train the NN", action="store_true")
 parser.add_argument("--validate", help="validate the NN", action="store_true")
-parser.add_argument("--transfer_from", default='/root/ckpt/adam-lr1e-2', type=str, help="name of pretrained model for transfer learning")
+parser.add_argument("--transfer_from", default='https://www.dropbox.com/sh/vpgg5yah4hc0vjg/AADi2L6hDxXUn40JZPKus4ADa?dl=0', type=str, help="url of pretrained model for transfer learning")
 parser.add_argument("--batchesTrained", default=0, type=int, help='number of batches already trained (for lr schedule)')
 # beam search
 parser.add_argument("--beamsearch", help="use beam search instead of best path decoding", action="store_true")
@@ -82,7 +82,7 @@ os.makedirs(ckptpath, exist_ok=True)
 class FilePaths:
   "filenames and paths to data"
   fnCkptpath = ckptpath
-  fnTransferFrom = join(ckptroot, args.transfer_from) if args.transfer_from!='' else None
+  urlTransferFrom = join(ckptroot, args.transfer_from) if args.transfer_from!='' else None
   fnCharList = join(ckptpath, 'charList.txt')
   fnCorpus = join(ckptpath, 'corpus.txt')
   fnAccuracy = join(ckptpath, 'accuracy.txt')
