@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 import time
 
 def log_image(experiment, img, text, savetag, ckptpath, counter, epoch):
-  imageFile = join(ckptpath, 'images', savetag+'-'+str(counter)+'.'+str(epoch)+'.jpg')
+  imageFile = join(ckptpath, savetag+'-'str(counter)+'-epoch-'+str(epoch)+'.jpg')
   os.makedirs(dirname(imageFile), exist_ok=True)
   plt.imshow(img.T, cmap='gray'); plt.axis('image'); plt.title(text.replace('$','\$'));
   # plt.axis('tight')
-  plt.tight_layout(pad=0); time.sleep(.9)
+  plt.tight_layout(pad=0);
   plt.savefig(imageFile)
   experiment.log_image(imageFile)
   time.sleep(.2)

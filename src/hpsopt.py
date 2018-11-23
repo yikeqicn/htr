@@ -9,7 +9,7 @@ parser.add_argument('--exptId', default=None, type=int, help='existing experimen
 parser.add_argument('--gpus', default=[0], type=int, nargs='+')
 parser.add_argument('--bandwidth', default=None, type=int)
 args = parser.parse_args()
-open('/root/hpsopt.bash','w+').write('nohup python '+' '.join(sys.argv)+' &\n') # write command to the log
+open('/root/hpsopt.bash','w+').write('cd /root/htr/src && python '+' '.join(sys.argv)+'\n') # write command to the log
 
 api_key = 'FJUVRFEZUNYVIMTPCJLSGKOSDNSNTFSDITMBVMZRKZRRVREL'
 

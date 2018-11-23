@@ -59,21 +59,21 @@ class DataLoader:
         self.samples.append(Sample(gtText, fileName))
 
     else:
-      # MODIFIED HERE FOR OUR CUSTOM DATASET
+      # custom dataset loader
       fileName = []
       for f in filePath: fileName = fileName + glob(join(f, '**/*.jpg'), recursive=True)
-      gtText = [basename(f)[:-4] if basename(f).find('empty-')==-1 else ' ' for f in fileName] # if filename has 'empty-', then the gt is ''
+      gtText = [basename(f)[:-4] if basename(f).find('empty-')==-1 else '_' for f in fileName] # if filename has 'empty-', then the gt is '_'
       chars = set.union(*[set(t) for t in gtText])
       self.samples = [Sample(g,f) for g,f in zip(gtText, fileName)]
 
     # split into training and validation set: 95% - 5%
-    if not is_test:
+    if not is_test: # 95% split for train and valid
       random.shuffle(self.samples)
       splitIdx = int(0.95 * len(self.samples))
       self.trainSamples = self.samples[:splitIdx]
       self.validationSamples = self.samples[splitIdx:]
       print("Number of train/valid samples: ", len(self.trainSamples), ",", len(self.validationSamples))
-    else:
+    else: # no split (all in valid) for test
       self.trainSamples = []
       self.validationSamples = [sample for sample in self.samples if sample.gtText.find('-')==-1] # remove samples with hyphens since model isnt trained on that
       print("Number of test samples: ", len(self.validationSamples))

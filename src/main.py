@@ -22,11 +22,10 @@ home = os.environ['HOME']
 # basic operations
 parser = argparse.ArgumentParser()
 parser.add_argument("--name", default='debug', type=str, help="name of the log")
-parser.add_argument("--nameid", default='', type=str, help="name metadata from parallel threaded runs")
 parser.add_argument("--gpu", default='0', type=str, help="gpu numbers")
 parser.add_argument("--train", help="train the NN", action="store_true")
 parser.add_argument("--validate", help="validate the NN", action="store_true")
-parser.add_argument("--transfer_from", default='https://www.dropbox.com/sh/vpgg5yah4hc0vjg/AADi2L6hDxXUn40JZPKus4ADa?dl=0', type=str, help="url of pretrained model for transfer learning")
+parser.add_argument("--transfer", action="store_true")
 parser.add_argument("--batchesTrained", default=0, type=int, help='number of batches already trained (for lr schedule)')
 # beam search
 parser.add_argument("--beamsearch", help="use beam search instead of best path decoding", action="store_true")
@@ -38,7 +37,7 @@ parser.add_argument("--optimizer", default='rmsprop', help="adam, rmsprop, momen
 parser.add_argument("--wdec", default=1e-4, type=float, help='weight decay')
 parser.add_argument("--lrDrop1", default=10, type=int, help='step to drop lr by 10 first time')
 parser.add_argument("--lrDrop2", default=1000, type=int, help='step to drop lr by 10 sexond time')
-parser.add_argument("--epochEnd", default=50, type=int, help='step to drop lr by 10 sexond time')
+parser.add_argument("--epochEnd", default=1, type=int, help='step to drop lr by 10 sexond time')
 # trainset hyperparams
 parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
 parser.add_argument("--noartifact", help="dont insert artifcats", action="store_true")
@@ -63,9 +62,10 @@ parser.add_argument("--crop_c1", default=10, type=int)
 parser.add_argument("--crop_c2", default=115, type=int)
 args = parser.parse_args()
 
-open('/root/repo/htr/src/commands.log','a').write('nohup python '+' '.join(sys.argv)+' &\n') # write command to the log
+# write command to file
+open('/root/commands.log','a').write('cd /root/htr/repo/src && python '+' '.join(sys.argv)+'\n') # write command to the log
 
-name = args.name if args.nameid=='' else args.name+'-'+args.nameid
+name = args.name
 experiment.set_name(name)
 experiment.log_multiple_params(vars(args))
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -78,9 +78,8 @@ os.makedirs(ckptpath, exist_ok=True)
 
 # chublet
 class FilePaths:
-  "filenames and paths to data"
   fnCkptpath = ckptpath
-  urlTransferFrom = args.transfer_from if args.transfer_from!='' else None
+  urlTransferFrom = 'https://www.dropbox.com/sh/vpgg5yah4hc0vjg/AADi2L6hDxXUn40JZPKus4ADa?dl=0'
   fnCharList = join(ckptpath, 'charList.txt')
   fnCorpus = join(ckptpath, 'corpus.txt')
   fnAccuracy = join(ckptpath, 'accuracy.txt')
@@ -98,11 +97,8 @@ def train(model, loader, testloader=None):
   "train NN"
   epoch = 0  # number of training epochs since start
   bestCharErrorRate = bestWordErrorRate = float('inf')  # best valdiation character error rate
-  noImprovementSince = 0  # number of epochs no improvement of character error rate occured
-  earlyStopping = 12  # stop training after this number of epochs without improvement
   while True:
-    epoch += 1
-    print('Epoch:', epoch, ' Training...')
+    epoch += 1; print('Epoch:', epoch, ' Training...')
 
     # train
     loader.trainSet()
@@ -112,10 +108,12 @@ def train(model, loader, testloader=None):
       batch = loader.getNext()
       loss = model.trainBatch(batch)
       step = iterInfo[0]+(epoch-1)*iterInfo[1]
-      if np.mod(iterInfo[0],200)==0:
+
+      if np.mod(iterInfo[0],110)==0:
         print('TRAIN: Batch:', iterInfo[0], '/', iterInfo[1], 'Loss:', loss)
         experiment.log_metric('train/loss', loss, step)
-      if counter<5: # log images
+
+      if epoch==1 and counter<5: # log images
         text = batch.gtTexts[counter]
         utils.log_image(experiment, batch.imgs[0], text, 'train', ckptpath, counter, epoch)
         counter += 1
@@ -131,12 +129,12 @@ def train(model, loader, testloader=None):
       experiment.log_metric('test/cer', charErrorRate, step)
       experiment.log_metric('test/wer', 1-wordAccuracy, step)
 
-    # if best validation accuracy so far, save model parameters
-    if charErrorRate < bestCharErrorRate:
+    # log best metrics
+    if charErrorRate < bestCharErrorRate: # if best validation accuracy so far, save model parameters
       print('Character error rate improved, save model')
       bestCharErrorRate = charErrorRate
       noImprovementSince = 0
-      model.save()
+      model.save(epoch)
       open(FilePaths.fnAccuracy, 'w').write(
         'Validation character error rate of saved model: %f%%' % (charErrorRate * 100.0))
     else:
@@ -147,10 +145,7 @@ def train(model, loader, testloader=None):
     experiment.log_metric('best/cer', bestCharErrorRate, step)
     experiment.log_metric('best/wer', bestWordErrorRate, step)
 
-    # # stop training if no more improvement in the last x epochs
-    # if noImprovementSince >= earlyStopping:
-    #   print('No more improvement since %d epochs. Training stopped.' % earlyStopping)
-    #   break
+    # stop training
     if epoch>=args.epochEnd: print('Done with training at epoch', epoch, 'bestCharErrorRate='+str(bestCharErrorRate)); break
 
 
@@ -162,8 +157,8 @@ def validate(model, loader, epoch, is_testing=False):
   numCharErr, numCharTotal, numWordOK, numWordTotal = 0, 0, 0, 0
   plt.figure(figsize=(6,2))
   counter = 0
-  n_log = 20 if is_testing else 0
   while loader.hasNext():
+
     iterInfo = loader.getIteratorInfo()
     batch = loader.getNext(is_testing)
     recognized = model.inferBatch(batch)
@@ -173,11 +168,17 @@ def validate(model, loader, epoch, is_testing=False):
       dist = editdistance.eval(recognized[i], batch.gtTexts[i])
       numCharErr += dist
       numCharTotal += len(batch.gtTexts[i])
-      # if counter<n_log: # log images
-      if batch.gtTexts[i]==' ': # log images
+
+      if is_testing and epoch==args.epochEnd:
         text = ' '.join(['[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + batch.gtTexts[i] + '"', '->', '"' + recognized[i] + '"'])
-        utils.log_image(experiment, batch.imgs[i], text, 'test' if is_testing else 'valid', ckptpath, counter, epoch)
+        utils.log_image(experiment, batch.imgs[i], text, 'test-'+('ok' if dist==0 else 'err'), ckptpath, counter, epoch)
         counter += 1
+
+    if epoch==1 and counter<5 and not is_testing: # log images
+      text = ' '.join(['[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + batch.gtTexts[i] + '"', '->', '"' + recognized[i] + '"'])
+      utils.log_image(experiment, batch.imgs[i], text, 'valid', ckptpath, counter, epoch)
+      counter += 1
+
 
   # print validation result
   charErrorRate = numCharErr / numCharTotal

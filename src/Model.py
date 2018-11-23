@@ -24,7 +24,6 @@ class Model:
     self.charList = charList
     self.decoderType = decoderType
     self.mustRestore = mustRestore
-    self.snapID = 0
     self.FilePaths = FilePaths
     self.batchsize = args.batchsize
     self.lrInit = args.lrInit
@@ -185,7 +184,8 @@ class Model:
       print('Ran global_variables_initializer')
       sess.run(tf.global_variables_initializer())
 
-    if self.FilePaths.urlTransferFrom!=None: # ADDED BY RONNY initialize params from other model (transfer learning)
+    # initialize params from other model (transfer learning)
+    if self.args.transfer:
 
       utils.maybe_download(source_url=self.FilePaths.urlTransferFrom,
                            filename=self.FilePaths.fnCkptpath,
@@ -194,9 +194,9 @@ class Model:
                            force=True)
       saverTransfer = tf.train.Saver(tf.trainable_variables()[:-1])  # load all variables except from logit (classification) layer
       latestSnapshot = tf.train.latest_checkpoint(self.FilePaths.fnCkptpath)  # is there a saved model?
-      if not latestSnapshot: raise Exception('No TransferFrom saved model in '+self.FilePaths.urlTransferFrom)
+      if not latestSnapshot: raise Exception('transferFrom model invalid from '+self.FilePaths.urlTransferFrom)
       print('Loaded variable values (except logit layer) from ' + latestSnapshot)
-      saverTransfer.restore(sess, latestSnapshot)
+      saverTransfer.restore(sess, join(self.FilePaths.fnCkptpath, 'model'))
 
     return (sess, saver)
 
@@ -269,7 +269,6 @@ class Model:
                             {self.inputImgs: batch.imgs, self.seqLen: [Model.maxTextLen] * self.batchsize, self.is_training: False})
     return self.decoderOutputToText(decoded)
 
-  def save(self):
+  def save(self, epoch):
     "save model to file"
-    self.snapID += 1
-    self.saver.save(self.sess, join(self.FilePaths.fnCkptpath, 'model'), global_step=self.snapID)
+    self.saver.save(self.sess, join(self.FilePaths.fnCkptpath, 'model'), global_step=epoch)

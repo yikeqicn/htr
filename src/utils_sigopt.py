@@ -14,7 +14,9 @@ def evaluate_model(assignment, gpu, name):
   print(command)
   output = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8')
   i = output.stdout.find('bestCharErrorRate')
-  return 1-float(output.stdout[(i+18):(i+32)]) # optimization metric is the char accuracy
+  charAccuracy = 1-float(output.stdout[(i+18):(i+32)])
+  print('Suggestion', name, 'charAccuracy', charAccuracy)
+  return charAccuracy # optimization metric is the char accuracy
 
 class Master(threading.Thread):
   '''master thread which initializes an experimetn and starts the workers (passing in the expt id and gpu it should run on.
@@ -30,7 +32,6 @@ class Master(threading.Thread):
     else: # use existing experiment id
       expt = self.conn.experiments(exptId)
       expt.update(**exptDetail)
-      expt.suggestions().delete(state='open')
       if not resume: # delete all observations and suggestions
         expt.observations().delete()
         expt.suggestions().delete()
@@ -90,6 +91,7 @@ class Worker(threading.Thread):
                                                                failed=failed,
                                                                metadata=self.metadata,
                                                                )
+      print(self.metadata, 'failed='+str(failed))
 
 def get_expt_ids():
   return conn.clients(client_id).plan().fetch().current_period.experiments
