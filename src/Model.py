@@ -98,7 +98,7 @@ class Model:
     rnnIn3d = tf.squeeze(rnnIn4d, axis=[2])
 
     # basic cells which is used to build RNN
-    numHidden = self.rnndim
+    numHidden = self.args.rnndim
     cells = [tf.contrib.rnn.LSTMCell(num_units=numHidden, state_is_tuple=True) for _ in range(2)]  # 2 layers
 
     # stack basic cells
@@ -182,7 +182,7 @@ class Model:
       print('Init with stored values from ' + latestSnapshot)
       saver.restore(sess, latestSnapshot)
     else:
-      print('Init with new values')
+      print('Ran global_variables_initializer')
       sess.run(tf.global_variables_initializer())
 
     if self.FilePaths.urlTransferFrom!=None: # ADDED BY RONNY initialize params from other model (transfer learning)
@@ -195,7 +195,7 @@ class Model:
       saverTransfer = tf.train.Saver(tf.trainable_variables()[:-1])  # load all variables except from logit (classification) layer
       latestSnapshot = tf.train.latest_checkpoint(self.FilePaths.fnCkptpath)  # is there a saved model?
       if not latestSnapshot: raise Exception('No TransferFrom saved model in '+self.FilePaths.urlTransferFrom)
-      print('Init with stored values (except logit layer) from ' + latestSnapshot)
+      print('Loaded variable values (except logit layer) from ' + latestSnapshot)
       saverTransfer.restore(sess, latestSnapshot)
 
     return (sess, saver)

@@ -1,6 +1,6 @@
 from comet_ml import Experiment
 experiment = Experiment(api_key="vPCPPZrcrUBitgoQkvzxdsh9k", parse_args=False,
-                        project_name='iam-hpsearch')
+                        project_name='hps-opt')
 
 import sys
 import argparse
@@ -43,8 +43,6 @@ parser.add_argument("--epochEnd", default=50, type=int, help='step to drop lr by
 parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
 parser.add_argument("--noartifact", help="dont insert artifcats", action="store_true")
 parser.add_argument("--iam", help='use iam dataset', action='store_true')
-parser.add_argument("--datapath", default='/root/datasets/htr_assets/crowdsource/processed/', type=str, help="train/valid path if not using iam")
-parser.add_argument("--testpath", default='/root/datasets/htr_assets/nw_im_crop_curated/', type=str, help="test path ")
 # densenet hyperparams
 parser.add_argument("--nondensenet", help="noncustom (original) vanilla cnn", action="store_true")
 parser.add_argument("--growth_rate", default=12, type=int, help='growth rate (k)')
@@ -65,7 +63,7 @@ parser.add_argument("--crop_c1", default=10, type=int)
 parser.add_argument("--crop_c2", default=115, type=int)
 args = parser.parse_args()
 
-open('/root/commands.log','a').write('nohup python '+' '.join(sys.argv)+' &\n') # write command to the log
+open('/root/repo/htr/src/commands.log','a').write('nohup python '+' '.join(sys.argv)+' &\n') # write command to the log
 
 name = args.name if args.nameid=='' else args.name+'-'+args.nameid
 experiment.set_name(name)
@@ -82,13 +80,17 @@ os.makedirs(ckptpath, exist_ok=True)
 class FilePaths:
   "filenames and paths to data"
   fnCkptpath = ckptpath
-  urlTransferFrom = join(ckptroot, args.transfer_from) if args.transfer_from!='' else None
+  urlTransferFrom = args.transfer_from if args.transfer_from!='' else None
   fnCharList = join(ckptpath, 'charList.txt')
   fnCorpus = join(ckptpath, 'corpus.txt')
   fnAccuracy = join(ckptpath, 'accuracy.txt')
   # fnTrain = '/data/home/jdegange/vision/digitsdataset2/' # mnist digit sequences
-  # fnTrain = '/root/datasets/htr_assets/crowdsource/extracted/' # ey handwritten digit strings
-  fnTrain = args.datapath
+  fnTrain = ['/root/datasets/htr_assets/crowdsource/processed/',
+             '/root/datasets/htr_assets/nw_empty_patches/train/',
+             ]
+  fnTest = ['/root/datasets/htr_assets/nw_im_crop_curated/',
+            '/root/datasets/htr_assets/nw_empty_patches/test/',
+            ]
   if args.iam: fnTrain = join(home, 'datasets/iam_handwriting/')
   fnInfer = join(home, 'datasets', 'htr_debug', 'trainbold.png')
 
@@ -115,7 +117,7 @@ def train(model, loader, testloader=None):
         experiment.log_metric('train/loss', loss, step)
       if counter<5: # log images
         text = batch.gtTexts[counter]
-        utils.log_image(experiment, batch, text, 'train', ckptpath, counter, epoch)
+        utils.log_image(experiment, batch.imgs[0], text, 'train', ckptpath, counter, epoch)
         counter += 1
 
     # validate
@@ -160,7 +162,7 @@ def validate(model, loader, epoch, is_testing=False):
   numCharErr, numCharTotal, numWordOK, numWordTotal = 0, 0, 0, 0
   plt.figure(figsize=(6,2))
   counter = 0
-  n_log = 20 if is_testing else 10
+  n_log = 20 if is_testing else 0
   while loader.hasNext():
     iterInfo = loader.getIteratorInfo()
     batch = loader.getNext(is_testing)
@@ -171,9 +173,10 @@ def validate(model, loader, epoch, is_testing=False):
       dist = editdistance.eval(recognized[i], batch.gtTexts[i])
       numCharErr += dist
       numCharTotal += len(batch.gtTexts[i])
-      if counter<n_log: # log images
+      # if counter<n_log: # log images
+      if batch.gtTexts[i]==' ': # log images
         text = ' '.join(['[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + batch.gtTexts[i] + '"', '->', '"' + recognized[i] + '"'])
-        utils.log_image(experiment, batch, text, 'test' if is_testing else 'valid', ckptpath, counter, epoch)
+        utils.log_image(experiment, batch.imgs[i], text, 'test' if is_testing else 'valid', ckptpath, counter, epoch)
         counter += 1
 
   # print validation result
@@ -204,7 +207,7 @@ def main():
   if args.train or args.validate:
     # load training data, create TF model
     loader = DataLoader(FilePaths.fnTrain, args.batchsize, args.imgsize, Model.maxTextLen, args)
-    testloader = DataLoader(args.testpath, args.batchsize, args.imgsize, Model.maxTextLen, args, is_test=True)
+    testloader = DataLoader(FilePaths.fnTest, args.batchsize, args.imgsize, Model.maxTextLen, args, is_test=True)
 
     # save characters of model for inference mode
     open(FilePaths.fnCharList, 'w').write(str().join(loader.charList))
