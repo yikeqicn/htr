@@ -1,5 +1,5 @@
 import argparse
-from src.utils_sigopt import Master
+from utils_sigopt import Master
 import sys
 
 parser = argparse.ArgumentParser()
