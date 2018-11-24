@@ -7,7 +7,7 @@ client_id = 10179
 
 def evaluate_model(assignment, gpu, name):
   assignment = dict(assignment)
-  command = 'python main.py --train --beamsearch' + \
+  command = 'python main.py --train --transfer --beamsearch' + \
             ' --gpu=' + str(gpu) + \
             ' --name=' + name + ' ' + \
             ' '.join(['--' + k +'=' + str(v) for k,v in assignment.items()])

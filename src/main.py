@@ -37,7 +37,7 @@ parser.add_argument("--optimizer", default='rmsprop', help="adam, rmsprop, momen
 parser.add_argument("--wdec", default=1e-4, type=float, help='weight decay')
 parser.add_argument("--lrDrop1", default=10, type=int, help='step to drop lr by 10 first time')
 parser.add_argument("--lrDrop2", default=1000, type=int, help='step to drop lr by 10 sexond time')
-parser.add_argument("--epochEnd", default=1, type=int, help='step to drop lr by 10 sexond time')
+parser.add_argument("--epochEnd", default=50, type=int, help='end after this many epochs')
 # trainset hyperparams
 parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
 parser.add_argument("--noartifact", help="dont insert artifcats", action="store_true")
@@ -85,10 +85,10 @@ class FilePaths:
   fnAccuracy = join(ckptpath, 'accuracy.txt')
   # fnTrain = '/data/home/jdegange/vision/digitsdataset2/' # mnist digit sequences
   fnTrain = ['/root/datasets/htr_assets/crowdsource/processed/',
-             '/root/datasets/htr_assets/nw_empty_patches/train/',
+             # '/root/datasets/htr_assets/nw_empty_patches/train/',
              ]
   fnTest = ['/root/datasets/htr_assets/nw_im_crop_curated/',
-            '/root/datasets/htr_assets/nw_empty_patches/test/',
+            # '/root/datasets/htr_assets/nw_empty_patches/test/',
             ]
   if args.iam: fnTrain = join(home, 'datasets/iam_handwriting/')
   fnInfer = join(home, 'datasets', 'htr_debug', 'trainbold.png')

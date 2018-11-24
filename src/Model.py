@@ -1,3 +1,4 @@
+from glob import glob
 import numpy as np
 import sys
 import tensorflow as tf
@@ -167,36 +168,31 @@ class Model:
     print('Tensorflow: ' + tf.__version__)
 
     sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))
-
     saver = tf.train.Saver(max_to_keep=1)  # saver saves model to file
-    modelDir = self.FilePaths.fnCkptpath
-    latestSnapshot = tf.train.latest_checkpoint(modelDir)  # is there a saved model?
 
-    # if model must be restored (for inference), there must be a snapshot
-    if self.mustRestore and not latestSnapshot:
-      raise Exception('No saved model found in: ' + modelDir)
+    # Restore from saved model in current checkpoint directory
+    latestSnapshot = tf.train.latest_checkpoint(self.FilePaths.fnCkptpath)  # is there a saved model?
+    if self.mustRestore and not latestSnapshot: # if model must be restored (for inference), there must be a snapshot
+      raise Exception('No saved model found in: ' + self.FilePaths.fnCkptpath)
 
-    # load saved model if available
-    if latestSnapshot:
-      print('Init with stored values from ' + latestSnapshot)
+    if latestSnapshot: # load saved model if available
       saver.restore(sess, latestSnapshot)
+      print('Init with stored values from ' + latestSnapshot)
     else:
-      print('Ran global_variables_initializer')
       sess.run(tf.global_variables_initializer())
+      print('Ran global_variables_initializer')
 
     # initialize params from other model (transfer learning)
     if self.args.transfer:
 
       utils.maybe_download(source_url=self.FilePaths.urlTransferFrom,
-                           filename=self.FilePaths.fnCkptpath,
+                           filename=join(self.FilePaths.fnCkptpath, 'transferFrom'),
                            target_directory=None,
                            filetype='folder',
                            force=True)
       saverTransfer = tf.train.Saver(tf.trainable_variables()[:-1])  # load all variables except from logit (classification) layer
-      latestSnapshot = tf.train.latest_checkpoint(self.FilePaths.fnCkptpath)  # is there a saved model?
-      if not latestSnapshot: raise Exception('transferFrom model invalid from '+self.FilePaths.urlTransferFrom)
-      print('Loaded variable values (except logit layer) from ' + latestSnapshot)
-      saverTransfer.restore(sess, join(self.FilePaths.fnCkptpath, 'model'))
+      saverTransfer.restore(sess, glob(join(self.FilePaths.fnCkptpath, 'transferFrom', 'model*'))[0].split('.')[0])
+      print('Loaded variable values (except logit layer) from ' + self.FilePaths.urlTransferFrom)
 
     return (sess, saver)
 
