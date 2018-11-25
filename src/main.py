@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import shutil
 import utils
 import sys
+import socket
 home = os.environ['HOME']
 
 # basic operations
@@ -37,7 +38,7 @@ parser.add_argument("--optimizer", default='rmsprop', help="adam, rmsprop, momen
 parser.add_argument("--wdec", default=1e-4, type=float, help='weight decay')
 parser.add_argument("--lrDrop1", default=10, type=int, help='step to drop lr by 10 first time')
 parser.add_argument("--lrDrop2", default=1000, type=int, help='step to drop lr by 10 sexond time')
-parser.add_argument("--epochEnd", default=50, type=int, help='end after this many epochs')
+parser.add_argument("--epochEnd", default=40, type=int, help='end after this many epochs')
 # trainset hyperparams
 parser.add_argument("--noncustom", help="noncustom (original) augmentation technique", action="store_true")
 parser.add_argument("--noartifact", help="dont insert artifcats", action="store_true")
@@ -61,6 +62,9 @@ parser.add_argument("--crop_r2", default=28, type=int)
 parser.add_argument("--crop_c1", default=10, type=int)
 parser.add_argument("--crop_c2", default=115, type=int)
 args = parser.parse_args()
+
+# args = utils.debug_settings(args)
+experiment.log_other('hostname', socket.gethostname())
 
 # write command to file
 open('/root/commands.log','a').write('cd /root/htr/repo/src && python '+' '.join(sys.argv)+'\n') # write command to the log
