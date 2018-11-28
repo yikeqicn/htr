@@ -150,7 +150,7 @@ def train(model, loader, testloader=None):
     experiment.log_metric('best/wer', bestWordErrorRate, step)
 
     # stop training
-    if epoch>=args.epochEnd: print('Done with training at epoch', epoch, 'bestCharErrorRate='+str(bestCharErrorRate)); break
+    if epoch>=args.epochEnd: print('Done with training at epoch', epoch, 'sigoptObservation='+str(bestCharErrorRate)); break
 
 
 def validate(model, loader, epoch, is_testing=False):

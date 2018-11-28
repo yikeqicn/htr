@@ -14,6 +14,19 @@ parser.add_argument('--bandwidth', default=None, type=int)
 args = parser.parse_args()
 open('/root/hpsopt.bash','w').write('cd /root/repo/htr/src && python '+' '.join(sys.argv)+'\n') # write command to the log
 
+def evaluate_model(assignment, gpu, name):
+  assignment = dict(assignment)
+  command = 'python main.py --train --transfer --beamsearch' + \
+            ' --gpu=' + str(gpu) + \
+            ' --name=' + name + ' ' + \
+            ' '.join(['--' + k +'=' + str(v) for k,v in assignment.items()])
+  print(command)
+  output = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8')
+  i = output.stdout.find('sigoptObservation')
+  obs = 1-float(output.stdout[(i+18):(i+32)])
+  print('Suggestion', name, 'observation', obs)
+  return charAccuracy # optimization metric is the char accuracy
+
 # download dataset
 dataUrl = 'https://www.dropbox.com/s/e6d1w5roodv8mv3/htr_assets.zip?dl=0'
 maybe_download(dataUrl, 'htr_assets', '/root/datasets', filetype='zip', force=False)
@@ -39,6 +52,6 @@ exptDetail = dict(name=args.name, parameters=parameters, observation_budget=len(
                   parallel_bandwidth=len(args.gpus) if args.bandwidth==None else args.bandwidth)
 
 if __name__ == '__main__':
-  master = Master(exptDetail=exptDetail, **vars(args))
+  master = Master(evalfun=evaluate_model, exptDetail=exptDetail, **vars(args))
   master.start()
   master.join()
