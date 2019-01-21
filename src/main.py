@@ -71,7 +71,7 @@ open('/root/commands.log','a').write('cd /root/htr/repo/src && python '+' '.join
 
 name = args.name
 experiment.set_name(name)
-experiment.log_multiple_params(vars(args))
+experiment.log_parameters(vars(args))
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 reporoot = join(home, 'repo')

@@ -7,6 +7,109 @@ from os.path import join
 import os
 from os.path import join, basename, dirname
 
+import gzip
+import pickle
+import torch.utils.data as data
+import os
+from utils import maybe_download
+from os.path import join, basename, dirname
+
+class IAM(data.Dataset):
+  '''iam dataset'''
+
+  def __init__(self, root, train, transform=None):
+
+    maybe_download('https://www.dropbox.com/s/jspn547dz473shr/MNISTpoly19.zip?dl=0',
+                   'MNISTpoly'+str(size), root, 'zip')
+
+    self.root = join(root, 'MNISTpoly'+str(size), 'train')
+    self.transform=transform
+
+    # custom dataset loader
+    fileName = []
+    for f in filePath: fileName = fileName + glob(join(f, '**/*.jpg'), recursive=True)
+    gtText = [basename(f)[:-4] if basename(f).find('empty-')==-1 else '_' for f in fileName] # if filename has 'empty-', then the gt is '_'
+    chars = set.union(*[set(t) for t in gtText])
+    self.samples = [Sample(g,f) for g,f in zip(gtText, fileName)]
+
+    # begin collecting all words in IAM dataset frm the words.txt summary file at the root of IAM directiory
+    f = open(filePath + 'words.txt')
+    chars = set()
+    for line in f:
+
+      # ignore comment line
+      if not line or line[0] == '#':
+        continue
+
+      lineSplit = line.strip().split(' ')
+      assert len(lineSplit) >= 9
+
+      # filename: part1-part2-part3 --> part1/part1-part2/part1-part2-part3.png
+      fileNameSplit = lineSplit[0].split('-')
+      fileName = filePath + 'words/' + fileNameSplit[0] + '/' + fileNameSplit[0] + '-' + fileNameSplit[1] + '/' + \
+                 lineSplit[0] + '.png'
+
+      # GT text are columns starting at 9
+      gtText = ' '.join(lineSplit[8:])[:maxTextLen]
+      chars = chars.union(set(list(gtText)))
+
+      # put sample into list
+      self.samples.append( (fileName, gtText) )
+
+  def __str__(self):
+    return 'IAM words dataset. Data location: '+self.root
+
+  def __len__(self):
+    return len(self.samples)
+
+  def __getitem__(self, idx):
+
+    gtText = self.samples[i].gtText
+    # img = preprocess(cv2.imread(self.samples[i][0], cv2.IMREAD_GRAYSCALE),
+    #                  args.imgsize, self.args, False, is_testing)
+    img = cv2.imread(self.samples[i][0])
+
+    return img, gtText
+
+class EyDigitStrings(data.Dataset):
+
+  def __init__(self, root, train, transform=None):
+
+    maybe_download('https://www.dropbox.com/s/jspn547dz473shr/MNISTpoly19.zip?dl=0',
+                   'MNISTpoly'+str(size), root, 'zip')
+
+    self.root = join(root, 'MNISTpoly'+str(size), 'train')
+    self.transform=transform
+
+    # begin collecting all words in IAM dataset frm the words.txt summary file at the root of IAM directiory
+    f = open(filePath + 'words.txt')
+    chars = set()
+    for line in f:
+
+      # ignore comment line
+      if not line or line[0] == '#':
+        continue
+
+      lineSplit = line.strip().split(' ')
+      assert len(lineSplit) >= 9
+
+      # filename: part1-part2-part3 --> part1/part1-part2/part1-part2-part3.png
+      fileNameSplit = lineSplit[0].split('-')
+      fileName = filePath + 'words/' + fileNameSplit[0] + '/' + fileNameSplit[0] + '-' + fileNameSplit[1] + '/' + \
+                 lineSplit[0] + '.png'
+
+      # GT text are columns starting at 9
+      gtText = ' '.join(lineSplit[8:])[:maxTextLen]
+      chars = chars.union(set(list(gtText)))
+
+      # put sample into list
+      self.samples.append( (fileName, gtText) )
+
+  def __str__(self):
+    return 'EY Digit Strings dataset. Data location: '+self.root
+
+
+
 class Sample:
   "sample from the dataset"
   def __init__(self, gtText, filePath):
