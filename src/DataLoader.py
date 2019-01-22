@@ -13,14 +13,15 @@ import torch.utils.data as data
 import os
 from utils import maybe_download
 from os.path import join, basename, dirname
+home = os.environ['HOME']
 
 class IAM(data.Dataset):
   '''iam dataset'''
 
-  def __init__(self, root, train, transform=None):
+  def __init__(self, root, transform=None):
 
-    maybe_download('https://www.dropbox.com/s/jspn547dz473shr/MNISTpoly19.zip?dl=0',
-                   'MNISTpoly'+str(size), root, 'zip')
+    maybe_download('https://www.dropbox.com/sh/tdd0784neuv9ysh/AABm3gxtjQIZ2R9WZ-XR9Kpra?dl=0',
+                   'iam_handwriting2', join(root, 'iam_handwriting2'), 'tar')
 
     self.root = join(root, 'MNISTpoly'+str(size), 'train')
     self.transform=transform
@@ -73,37 +74,16 @@ class IAM(data.Dataset):
 
 class EyDigitStrings(data.Dataset):
 
-  def __init__(self, root, train, transform=None):
-
-    maybe_download('https://www.dropbox.com/s/jspn547dz473shr/MNISTpoly19.zip?dl=0',
-                   'MNISTpoly'+str(size), root, 'zip')
+  def __init__(self, root):
 
     self.root = join(root, 'MNISTpoly'+str(size), 'train')
-    self.transform=transform
 
-    # begin collecting all words in IAM dataset frm the words.txt summary file at the root of IAM directiory
-    f = open(filePath + 'words.txt')
-    chars = set()
-    for line in f:
-
-      # ignore comment line
-      if not line or line[0] == '#':
-        continue
-
-      lineSplit = line.strip().split(' ')
-      assert len(lineSplit) >= 9
-
-      # filename: part1-part2-part3 --> part1/part1-part2/part1-part2-part3.png
-      fileNameSplit = lineSplit[0].split('-')
-      fileName = filePath + 'words/' + fileNameSplit[0] + '/' + fileNameSplit[0] + '-' + fileNameSplit[1] + '/' + \
-                 lineSplit[0] + '.png'
-
-      # GT text are columns starting at 9
-      gtText = ' '.join(lineSplit[8:])[:maxTextLen]
-      chars = chars.union(set(list(gtText)))
-
-      # put sample into list
-      self.samples.append( (fileName, gtText) )
+    # custom dataset loader
+    fileName = []
+    for f in filePath: fileName = fileName + glob(join(f, '**/*.jpg'), recursive=True)
+    gtText = [basename(f)[:-4] if basename(f).find('empty-')==-1 else '_' for f in fileName] # if filename has 'empty-', then the ground truth is nothing
+    self.chars = set.union(*[set(t) for t in gtText])
+    self.samples = [(f,g) for f,g in zip(fileName, gtText)]
 
   def __str__(self):
     return 'EY Digit Strings dataset. Data location: '+self.root
@@ -223,3 +203,5 @@ class DataLoader:
                        self.imgSize, self.args, self.dataAugmentation, is_testing) for i in batchRange]
     self.currIdx += self.batchSize
     return Batch(gtTexts, imgs)
+
+  iam = IAM(join(home, 'datasets'))
