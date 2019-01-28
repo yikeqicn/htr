@@ -3,16 +3,13 @@ import numpy as np
 import cv2
 from SamplePreprocessor import preprocess
 from glob import glob
-from os.path import join
-import os
-from os.path import join, basename, dirname
 
 import gzip
 import pickle
 import torch.utils.data as data
 import os
 from utils import maybe_download
-from os.path import join, basename, dirname
+from os.path import join, basename, dirname, exists
 home = os.environ['HOME']
 
 class IAM(data.Dataset):
@@ -20,10 +17,17 @@ class IAM(data.Dataset):
 
   def __init__(self, root, transform=None):
 
-    maybe_download('https://www.dropbox.com/sh/tdd0784neuv9ysh/AABm3gxtjQIZ2R9WZ-XR9Kpra?dl=0',
-                   'iam_handwriting2', join(root, 'iam_handwriting2'), 'tar')
+    self.root = join(root,'iam_handwriting2')
 
-    self.root = join(root, 'MNISTpoly'+str(size), 'train')
+    # download and put dataset in correct directory
+    maybe_download('https://www.dropbox.com/sh/tdd0784neuv9ysh/AABm3gxtjQIZ2R9WZ-XR9Kpra?dl=0',
+                   'iam_handwriting2', root, 'folder')
+    if exists(join(self.root,'words.tgz')):
+      os.makedirs(join(self.root, 'words'))
+      os.system('tar xvzf words.tgz --directory '+join(self.root, 'words'))
+      os.system('rm '+join(self.root,'words.tgz'))
+
+    self.root = join(root, 'iam_handwriting2')
     self.transform=transform
 
     # custom dataset loader
@@ -58,7 +62,7 @@ class IAM(data.Dataset):
       self.samples.append( (fileName, gtText) )
 
   def __str__(self):
-    return 'IAM words dataset. Data location: '+self.root
+    return 'IAM words dataset. Data location: '+self.root+', length: '+str(len(self))
 
   def __len__(self):
     return len(self.samples)
@@ -71,6 +75,8 @@ class IAM(data.Dataset):
     img = cv2.imread(self.samples[i][0])
 
     return img, gtText
+
+
 
 class EyDigitStrings(data.Dataset):
 
@@ -86,7 +92,7 @@ class EyDigitStrings(data.Dataset):
     self.samples = [(f,g) for f,g in zip(fileName, gtText)]
 
   def __str__(self):
-    return 'EY Digit Strings dataset. Data location: '+self.root
+    return 'EY Digit Strings dataset. Data location: '+self.root+' Length: '+str(len(self))
 
 
 
@@ -203,5 +209,3 @@ class DataLoader:
                        self.imgSize, self.args, self.dataAugmentation, is_testing) for i in batchRange]
     self.currIdx += self.batchSize
     return Batch(gtTexts, imgs)
-
-  iam = IAM(join(home, 'datasets'))
