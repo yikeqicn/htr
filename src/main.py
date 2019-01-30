@@ -1,12 +1,13 @@
 from comet_ml import Experiment
-experiment = Experiment(api_key="vPCPPZrcrUBitgoQkvzxdsh9k", parse_args=False,
-                        project_name='hps-opt')
+experiment = Experiment(api_key="vPCPPZrcrUBitgoQkvzxdsh9k", parse_args=False, project_name='htr')
 
 import sys
 import argparse
 import cv2
 import editdistance
 import numpy as np
+from datasets import EyDigitStrings, IAM
+from torch.utils.data import DataLoader, ConcatDataset
 from DataLoader import DataLoader, Batch
 # from DataLoaderMnistSeq import DataLoader, Batch
 from Model import Model, DecoderType
@@ -51,7 +52,7 @@ parser.add_argument("-total_blocks", default=5, type=int, help='nuber of densene
 parser.add_argument("-keep_prob", default=1, type=float, help='keep probability in dropout')
 parser.add_argument("-reduction", default=0.4, type=float, help='reduction factor in 1x1 conv in transition layers')
 parser.add_argument("-bc_mode", default=True, type=bool, help="bottleneck and compresssion mode")
-# rnn hyperparams
+# rnn,  hyperparams
 parser.add_argument("-rnndim", default=256, type=int, help='rnn dimenstionality')
 parser.add_argument("-rnnsteps", default=32, type=int, help='number of desired time steps (image slices) to feed rnn')
 # img size
@@ -61,13 +62,10 @@ parser.add_argument("-crop_r1", default=3, type=int)
 parser.add_argument("-crop_r2", default=28, type=int)
 parser.add_argument("-crop_c1", default=10, type=int)
 parser.add_argument("-crop_c2", default=115, type=int)
+# filepaths
+parser.add_argument("dataroot", default='/root/datasets')
+parser.add_argument("ckptroot", default='/root/ckpt')
 args = parser.parse_args()
-
-# args = utils.debug_settings(args)
-experiment.log_other('hostname', socket.gethostname())
-
-# write command to file
-open('/root/commands.log','a').write('cd /root/htr/repo/src && python '+' '.join(sys.argv)+'\n') # write command to the log
 
 name = args.name
 experiment.set_name(name)
@@ -80,7 +78,6 @@ ckptpath = join(ckptroot, name)
 if args.name=='debug': shutil.rmtree(ckptpath, ignore_errors=True)
 os.makedirs(ckptpath, exist_ok=True)
 
-# chublet
 class FilePaths:
   fnCkptpath = ckptpath
   urlTransferFrom = 'https://www.dropbox.com/sh/vpgg5yah4hc0vjg/AADi2L6hDxXUn40JZPKus4ADa?dl=0'
@@ -96,6 +93,48 @@ class FilePaths:
             ]
   if args.iam: fnTrain = join(home, 'datasets/iam_handwriting/')
   fnInfer = join(home, 'datasets', 'htr_debug', 'trainbold.png')
+
+def main():
+  "main function"
+
+  decoderType = DecoderType.BestPath
+  if args.beamsearch:
+    decoderType = DecoderType.BeamSearch
+  elif args.wordbeamsearch:
+    decoderType = DecoderType.WordBeamSearch
+
+  # train or validate on IAM dataset
+  if args.train or args.validate:
+
+    # load training data, create TF model
+    # loader = DataLoader(FilePaths.fnTrain, args.batchsize, args.imgsize, Model.maxTextLen, args)
+    # testloader = DataLoader(FilePaths.fnTest, args.batchsize, args.imgsize, Model.maxTextLen, args, is_test=True)
+
+    iam = IAM(args.dataroot)
+    eydigits = EyDigitStrings(args.dataroot)
+
+    concatdataset = ConcatDataset([iam, eydigits]) # concatenate the multiple datasets
+    testloader = DataLoader(concatdataset, batch_size=100, shuffle=False, num_workers=num_workers)
+
+    # save characters of model for inference mode
+    open(FilePaths.fnCharList, 'w').write(str().join(loader.charList))
+
+    # save words contained in dataset into file
+    open(FilePaths.fnCorpus, 'w').write(str(' ').join(loader.trainWords + loader.validationWords))
+
+    # execute training or validation
+    if args.train:
+      model = Model(args, loader.charList, decoderType, FilePaths=FilePaths)
+      train(model, loader, testloader)
+    elif args.validate:
+      model = Model(args, loader.charList, decoderType, mustRestore=True, FilePaths=FilePaths)
+      validate(model, loader)
+
+  # infer text on test image
+  else:
+    print(open(FilePaths.fnAccuracy).read())
+    model = Model(args, open(FilePaths.fnCharList).read(), decoderType, mustRestore=True, FilePaths=FilePaths)
+    infer(model, FilePaths.fnInfer)
 
 def train(model, loader, testloader=None):
   "train NN"
@@ -197,42 +236,6 @@ def infer(model, fnImg):
   batch = Batch(None, [img] * args.batchsize)  # fill all batch elements with same input image
   recognized = model.inferBatch(batch)  # recognize text
   print('Recognized:', '"' + recognized[0] + '"')  # all batch elements hold same result
-
-
-def main():
-  "main function"
-
-  decoderType = DecoderType.BestPath
-  if args.beamsearch:
-    decoderType = DecoderType.BeamSearch
-  elif args.wordbeamsearch:
-    decoderType = DecoderType.WordBeamSearch
-
-  # train or validate on IAM dataset
-  if args.train or args.validate:
-    # load training data, create TF model
-    loader = DataLoader(FilePaths.fnTrain, args.batchsize, args.imgsize, Model.maxTextLen, args)
-    testloader = DataLoader(FilePaths.fnTest, args.batchsize, args.imgsize, Model.maxTextLen, args, is_test=True)
-
-    # save characters of model for inference mode
-    open(FilePaths.fnCharList, 'w').write(str().join(loader.charList))
-
-    # save words contained in dataset into file
-    open(FilePaths.fnCorpus, 'w').write(str(' ').join(loader.trainWords + loader.validationWords))
-
-    # execute training or validation
-    if args.train:
-      model = Model(args, loader.charList, decoderType, FilePaths=FilePaths)
-      train(model, loader, testloader)
-    elif args.validate:
-      model = Model(args, loader.charList, decoderType, mustRestore=True, FilePaths=FilePaths)
-      validate(model, loader)
-
-  # infer text on test image
-  else:
-    print(open(FilePaths.fnAccuracy).read())
-    model = Model(args, open(FilePaths.fnCharList).read(), decoderType, mustRestore=True, FilePaths=FilePaths)
-    infer(model, FilePaths.fnInfer)
 
 
 if __name__ == '__main__':

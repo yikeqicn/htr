@@ -12,7 +12,6 @@ class DecoderType:
   WordBeamSearch = 2
 
 class Model:
-  "minimalistic TF model for HTR"
 
   # model constants
   batchSize = 50

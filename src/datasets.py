@@ -48,10 +48,13 @@ class IAM(data.Dataset):
 
       # GT text are columns starting at 9
       label = ' '.join(lineSplit[8:])
-      self.chars = chars.union(set(list(label)))
 
       # put sample into list
       self.samples.append( (fileName, label) )
+
+      # makes list of characters
+      chars = chars.union(set(list(label)))
+      self.charList = sorted(list(chars))
 
   def __str__(self):
     return 'IAM words dataset. Data location: '+self.root+', Length: '+str(len(self))
@@ -80,8 +83,11 @@ class EyDigitStrings(data.Dataset):
     # custom dataset loader
     allfiles = glob(join(self.root, '**/*.jpg'), recursive=True)
     labels = [basename(f)[:-4] if basename(f).find('empty-')==-1 else '_' for f in allfiles] # if filename has 'empty-', then the ground truth is nothing
-    chars = set.union(*[set(l) for l in labels])
     self.samples = list(zip(allfiles,labels))
+
+    # makes list of characters
+    chars = set.union(*[set(l) for l in labels])
+    self.charList = sorted(list(chars))
 
   def __str__(self):
     return 'EY Digit Strings dataset. Data location: '+self.root+', Length: '+str(len(self))
@@ -98,6 +104,36 @@ class EyDigitStrings(data.Dataset):
 
     return img, label
 
+class IRS(data.Dataset):
 
-iam = IAM(join(home,'datasets'))
-ey = EyDigitStrings(join(home,'datasets'))
+  def __init__(self, root, transform=None):
+
+    self.transform = transform
+    self.root = join(root, 'irs_handwriting')
+    maybe_download(source_url='https://www.dropbox.com/s/54jarzcb0mju32d/img_cropped_irs.zip?dl=0', filename='irs_handwriting', target_directory=root, filetype='zip')
+    if exists(join(root, 'img_cropped_irs')): os.system('mv '+join(root, 'img_cropped_irs')+' '+self.root)
+
+    folder_depth = 2
+    allfiles = glob(join(self.root, '**/'*folder_depth+'*.jpg'))
+    labels = [basename(f)[:-4] for f in allfiles]
+    self.samples = list(zip(allfiles, labels))
+
+  def __len__(self):
+    return len(self.samples)
+
+  def __str__(self):
+    return 'IRS dataset. Data location: '+self.root+', Length: '+str(len(self))
+
+  def __getitem__(self, idx):
+
+    label = self.samples[idx][1]
+    img = cv2.imread(self.samples[idx][0], cv2.IMREAD_GRAYSCALE)
+    if self.transform:
+      img = self.transform(img)
+
+    return img, label
+
+dataroot = join(home,'datasets')
+iam = IAM(dataroot)
+ey = EyDigitStrings(dataroot)
+irs = IRS(dataroot)
