@@ -1,3 +1,4 @@
+from glob import glob
 import numpy as np
 import sys
 import tensorflow as tf
@@ -11,7 +12,6 @@ class DecoderType:
   WordBeamSearch = 2
 
 class Model:
-  "minimalistic TF model for HTR"
 
   # model constants
   batchSize = 50
@@ -24,7 +24,6 @@ class Model:
     self.charList = charList
     self.decoderType = decoderType
     self.mustRestore = mustRestore
-    self.snapID = 0
     self.FilePaths = FilePaths
     self.batchsize = args.batchsize
     self.lrInit = args.lrInit
@@ -98,7 +97,7 @@ class Model:
     rnnIn3d = tf.squeeze(rnnIn4d, axis=[2])
 
     # basic cells which is used to build RNN
-    numHidden = self.rnndim
+    numHidden = self.args.rnndim
     cells = [tf.contrib.rnn.LSTMCell(num_units=numHidden, state_is_tuple=True) for _ in range(2)]  # 2 layers
 
     # stack basic cells
@@ -168,35 +167,31 @@ class Model:
     print('Tensorflow: ' + tf.__version__)
 
     sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, gpu_options=tf.GPUOptions(allow_growth=True)))
-
     saver = tf.train.Saver(max_to_keep=1)  # saver saves model to file
-    modelDir = self.FilePaths.fnCkptpath
-    latestSnapshot = tf.train.latest_checkpoint(modelDir)  # is there a saved model?
 
-    # if model must be restored (for inference), there must be a snapshot
-    if self.mustRestore and not latestSnapshot:
-      raise Exception('No saved model found in: ' + modelDir)
+    # Restore from saved model in current checkpoint directory
+    latestSnapshot = tf.train.latest_checkpoint(self.FilePaths.fnCkptpath)  # is there a saved model?
+    if self.mustRestore and not latestSnapshot: # if model must be restored (for inference), there must be a snapshot
+      raise Exception('No saved model found in: ' + self.FilePaths.fnCkptpath)
 
-    # load saved model if available
-    if latestSnapshot:
-      print('Init with stored values from ' + latestSnapshot)
+    if latestSnapshot: # load saved model if available
       saver.restore(sess, latestSnapshot)
+      print('Init with stored values from ' + latestSnapshot)
     else:
-      print('Init with new values')
       sess.run(tf.global_variables_initializer())
+      print('Ran global_variables_initializer')
 
-    if self.FilePaths.urlTransferFrom!=None: # ADDED BY RONNY initialize params from other model (transfer learning)
+    # initialize params from other model (transfer learning)
+    if self.args.transfer:
 
       utils.maybe_download(source_url=self.FilePaths.urlTransferFrom,
-                           filename=self.FilePaths.fnCkptpath,
+                           filename=join(self.FilePaths.fnCkptpath, 'transferFrom'),
                            target_directory=None,
                            filetype='folder',
                            force=True)
       saverTransfer = tf.train.Saver(tf.trainable_variables()[:-1])  # load all variables except from logit (classification) layer
-      latestSnapshot = tf.train.latest_checkpoint(self.FilePaths.fnCkptpath)  # is there a saved model?
-      if not latestSnapshot: raise Exception('No TransferFrom saved model in '+self.FilePaths.urlTransferFrom)
-      print('Init with stored values (except logit layer) from ' + latestSnapshot)
-      saverTransfer.restore(sess, latestSnapshot)
+      saverTransfer.restore(sess, glob(join(self.FilePaths.fnCkptpath, 'transferFrom', 'model*'))[0].split('.')[0])
+      print('Loaded variable values (except logit layer) from ' + self.FilePaths.urlTransferFrom)
 
     return (sess, saver)
 
@@ -269,7 +264,6 @@ class Model:
                             {self.inputImgs: batch.imgs, self.seqLen: [Model.maxTextLen] * self.batchsize, self.is_training: False})
     return self.decoderOutputToText(decoded)
 
-  def save(self):
+  def save(self, epoch):
     "save model to file"
-    self.snapID += 1
-    self.saver.save(self.sess, join(self.FilePaths.fnCkptpath, 'model'), global_step=self.snapID)
+    self.saver.save(self.sess, join(self.FilePaths.fnCkptpath, 'model'), global_step=epoch)

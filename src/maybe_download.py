@@ -3,18 +3,6 @@ from os.path import join, basename, dirname
 import matplotlib.pyplot as plt
 import time
 
-def log_image(experiment, img, text, savetag, ckptpath, counter, epoch):
-  imageFile = join(ckptpath, savetag+'-'+str(counter)+'-epoch-'+str(epoch)+'.jpg')
-  os.makedirs(dirname(imageFile), exist_ok=True)
-  plt.imshow(img.T, cmap='gray'); plt.axis('image'); plt.title(text.replace('$','\$'));
-  # plt.axis('tight')
-  plt.tight_layout(pad=0);
-  plt.savefig(imageFile)
-  experiment.log_image(imageFile)
-  time.sleep(.2)
-  os.remove(imageFile)
-
-
 def maybe_download(source_url, filename, target_directory, filetype='folder', force=False):
   """Download the data from some website, unless it's already here."""
   if source_url==None or filename==None: return
@@ -39,11 +27,3 @@ def maybe_download(source_url, filename, target_directory, filetype='folder', fo
       os.system('rm '+filepath+'.tar')
     else:
       os.system('wget -O '+filepath+' '+source_url)
-
-
-def debug_settings(args):
-  args.epochEnd = 1
-  args.growth_rate = 4
-  args.layers_per_block = 4
-  args.transfer = False
-  return args

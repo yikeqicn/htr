@@ -3,9 +3,98 @@ import numpy as np
 import cv2
 from SamplePreprocessor import preprocess
 from glob import glob
-from os.path import join
+
+import gzip
+import pickle
+import torch.utils.data as data
 import os
-from os.path import join, basename, dirname
+from utils import maybe_download
+from os.path import join, basename, dirname, exists
+home = os.environ['HOME']
+
+class IAM(data.Dataset):
+  '''iam dataset'''
+
+  def __init__(self, root, transform=None):
+
+    self.root = join(root,'iam_handwriting2')
+
+    # download and put dataset in correct directory
+    maybe_download('https://www.dropbox.com/sh/tdd0784neuv9ysh/AABm3gxtjQIZ2R9WZ-XR9Kpra?dl=0',
+                   'iam_handwriting2', root, 'folder')
+    if exists(join(self.root,'words.tgz')):
+      os.makedirs(join(self.root, 'words'))
+      os.system('tar xvzf words.tgz --directory '+join(self.root, 'words'))
+      os.system('rm '+join(self.root,'words.tgz'))
+
+    self.root = join(root, 'iam_handwriting2')
+    self.transform=transform
+
+    # custom dataset loader
+    fileName = []
+    for f in filePath: fileName = fileName + glob(join(f, '**/*.jpg'), recursive=True)
+    gtText = [basename(f)[:-4] if basename(f).find('empty-')==-1 else '_' for f in fileName] # if filename has 'empty-', then the gt is '_'
+    chars = set.union(*[set(t) for t in gtText])
+    self.samples = [Sample(g,f) for g,f in zip(gtText, fileName)]
+
+    # begin collecting all words in IAM dataset frm the words.txt summary file at the root of IAM directiory
+    f = open(filePath + 'words.txt')
+    chars = set()
+    for line in f:
+
+      # ignore comment line
+      if not line or line[0] == '#':
+        continue
+
+      lineSplit = line.strip().split(' ')
+      assert len(lineSplit) >= 9
+
+      # filename: part1-part2-part3 --> part1/part1-part2/part1-part2-part3.png
+      fileNameSplit = lineSplit[0].split('-')
+      fileName = filePath + 'words/' + fileNameSplit[0] + '/' + fileNameSplit[0] + '-' + fileNameSplit[1] + '/' + \
+                 lineSplit[0] + '.png'
+
+      # GT text are columns starting at 9
+      gtText = ' '.join(lineSplit[8:])[:maxTextLen]
+      chars = chars.union(set(list(gtText)))
+
+      # put sample into list
+      self.samples.append( (fileName, gtText) )
+
+  def __str__(self):
+    return 'IAM words dataset. Data location: '+self.root+', length: '+str(len(self))
+
+  def __len__(self):
+    return len(self.samples)
+
+  def __getitem__(self, idx):
+
+    gtText = self.samples[i].gtText
+    # img = preprocess(cv2.imread(self.samples[i][0], cv2.IMREAD_GRAYSCALE),
+    #                  args.imgsize, self.args, False, is_testing)
+    img = cv2.imread(self.samples[i][0])
+
+    return img, gtText
+
+
+
+class EyDigitStrings(data.Dataset):
+
+  def __init__(self, root):
+
+    self.root = join(root, 'MNISTpoly'+str(size), 'train')
+
+    # custom dataset loader
+    fileName = []
+    for f in filePath: fileName = fileName + glob(join(f, '**/*.jpg'), recursive=True)
+    gtText = [basename(f)[:-4] if basename(f).find('empty-')==-1 else '_' for f in fileName] # if filename has 'empty-', then the ground truth is nothing
+    self.chars = set.union(*[set(t) for t in gtText])
+    self.samples = [(f,g) for f,g in zip(fileName, gtText)]
+
+  def __str__(self):
+    return 'EY Digit Strings dataset. Data location: '+self.root+' Length: '+str(len(self))
+
+
 
 class Sample:
   "sample from the dataset"
@@ -25,7 +114,7 @@ class DataLoader:
   def __init__(self, filePath, batchSize, imgSize, maxTextLen, args, is_test=False):
     "loader for dataset at given location, preprocess images and text according to parameters"
 
-    assert filePath[-1] == '/'
+    # assert filePath[-1] == '/'
 
     self.args = args
     self.dataAugmentation = False
@@ -59,22 +148,21 @@ class DataLoader:
         self.samples.append(Sample(gtText, fileName))
 
     else:
-      # MODIFIED HERE FOR OUR CUSTOM DATASET
-      fileName = glob(join(filePath, '**/*.jpg'), recursive=True)
-      if not is_test: fileName = fileName + glob(join('/root/datasets/htr_assets/nw_empty_patches', '*.jpg')[:200])
-      else:           fileName = fileName + glob(join('/root/datasets/htr_assets/nw_empty_patches', '*.jpg')[200:])
-      gtText = [basename(f)[:-4] for f in fileName if basename(f).find('empty-')==-1 else ''] # if filename has 'empty-', then the gt is ''
+      # custom dataset loader
+      fileName = []
+      for f in filePath: fileName = fileName + glob(join(f, '**/*.jpg'), recursive=True)
+      gtText = [basename(f)[:-4] if basename(f).find('empty-')==-1 else '_' for f in fileName] # if filename has 'empty-', then the gt is '_'
       chars = set.union(*[set(t) for t in gtText])
       self.samples = [Sample(g,f) for g,f in zip(gtText, fileName)]
 
     # split into training and validation set: 95% - 5%
-    if not is_test:
+    if not is_test: # 95% split for train and valid
       random.shuffle(self.samples)
       splitIdx = int(0.95 * len(self.samples))
       self.trainSamples = self.samples[:splitIdx]
       self.validationSamples = self.samples[splitIdx:]
       print("Number of train/valid samples: ", len(self.trainSamples), ",", len(self.validationSamples))
-    else:
+    else: # no split (all in valid) for test
       self.trainSamples = []
       self.validationSamples = [sample for sample in self.samples if sample.gtText.find('-')==-1] # remove samples with hyphens since model isnt trained on that
       print("Number of test samples: ", len(self.validationSamples))
