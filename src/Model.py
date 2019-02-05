@@ -19,12 +19,12 @@ class Model:
   imgSize = (192, 48)
   maxTextLen = 32
 
-  def __init__(self, args, charList, decoderType=DecoderType.BestPath, mustRestore=False, FilePaths=None):
+  def __init__(self, args, charList, decoderType=DecoderType.BestPath, mustRestore=False):
     "init model: add CNN, RNN and CTC and initialize TF"
     self.charList = charList
     self.decoderType = decoderType
     self.mustRestore = mustRestore
-    self.FilePaths = FilePaths
+    # self.FilePaths = FilePaths
     self.batchsize = args.batchsize
     self.lrInit = args.lrInit
     self.args = args
@@ -170,9 +170,9 @@ class Model:
     saver = tf.train.Saver(max_to_keep=1)  # saver saves model to file
 
     # Restore from saved model in current checkpoint directory
-    latestSnapshot = tf.train.latest_checkpoint(self.FilePaths.fnCkptpath)  # is there a saved model?
+    latestSnapshot = tf.train.latest_checkpoint(self.args.ckptpath)  # is there a saved model?
     if self.mustRestore and not latestSnapshot: # if model must be restored (for inference), there must be a snapshot
-      raise Exception('No saved model found in: ' + self.FilePaths.fnCkptpath)
+      raise Exception('No saved model found in: ' + self.args.ckptpath)
 
     if latestSnapshot: # load saved model if available
       saver.restore(sess, latestSnapshot)
@@ -184,14 +184,14 @@ class Model:
     # initialize params from other model (transfer learning)
     if self.args.transfer:
 
-      utils.maybe_download(source_url=self.FilePaths.urlTransferFrom,
-                           filename=join(self.FilePaths.fnCkptpath, 'transferFrom'),
+      utils.maybe_download(source_url=self.args.urlTransferFrom,
+                           filename=join(self.args.ckptpath, 'transferFrom'),
                            target_directory=None,
                            filetype='folder',
                            force=True)
       saverTransfer = tf.train.Saver(tf.trainable_variables()[:-1])  # load all variables except from logit (classification) layer
-      saverTransfer.restore(sess, glob(join(self.FilePaths.fnCkptpath, 'transferFrom', 'model*'))[0].split('.')[0])
-      print('Loaded variable values (except logit layer) from ' + self.FilePaths.urlTransferFrom)
+      saverTransfer.restore(sess, glob(join(self.args.ckptpath, 'transferFrom', 'model*'))[0].split('.')[0])
+      print('Loaded variable values (except logit layer) from ' + self.args.urlTransferFrom)
 
     return (sess, saver)
 
@@ -245,16 +245,17 @@ class Model:
     # map labels to chars for all batch elements
     return [str().join([self.charList[c] for c in labelStr]) for labelStr in encodedLabelStrs]
 
-  def trainBatch(self, batch):
+  def trainBatch(self, images, labels):
     "feed a batch into the NN to train it"
-    sparse = self.toSparse(batch.gtTexts)
+    sparse = self.toSparse(labels)
     lrnrate = self.lrInit if self.batchesTrained < self.args.lrDrop1 else (
       self.lrInit*1e-1 if self.batchesTrained < self.args.lrDrop2 else self.lrInit*1e-2)  # decay learning rate
-    (_, lossVal) = self.sess.run([self.optimizer, self.loss], {self.inputImgs: batch.imgs,
-                                                                  self.gtTexts: sparse,
-                                                                  self.seqLen: [Model.maxTextLen] * self.batchsize,
-                                                                  self.learningRate: lrnrate,
-                                                                  self.is_training: True})
+    (_, lossVal) = self.sess.run([self.optimizer, self.loss],
+                                  {self.inputImgs: images,
+                                   self.gtTexts: sparse,
+                                   self.seqLen: [Model.maxTextLen] * self.batchsize,
+                                   self.learningRate: lrnrate,
+                                   self.is_training: True})
     self.batchesTrained += 1
     return lossVal
 
@@ -266,4 +267,4 @@ class Model:
 
   def save(self, epoch):
     "save model to file"
-    self.saver.save(self.sess, join(self.FilePaths.fnCkptpath, 'model'), global_step=epoch)
+    self.saver.save(self.sess, join(args.ckptpath, 'model'), global_step=epoch)

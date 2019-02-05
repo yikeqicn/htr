@@ -7,8 +7,10 @@ import cv2
 import editdistance
 import numpy as np
 from datasets import EyDigitStrings, IAM
-from torch.utils.data import DataLoader, ConcatDataset
-from DataLoader import DataLoader, Batch
+from torch.utils.data import DataLoader, ConcatDataset, random_split
+import torchvision
+import torchvision.transforms as transforms
+# from DataLoader import DataLoader, Batch
 # from DataLoaderMnistSeq import DataLoader, Batch
 from Model import Model, DecoderType
 from SamplePreprocessor import preprocess
@@ -63,8 +65,9 @@ parser.add_argument("-crop_r2", default=28, type=int)
 parser.add_argument("-crop_c1", default=10, type=int)
 parser.add_argument("-crop_c2", default=115, type=int)
 # filepaths
-parser.add_argument("dataroot", default='/root/datasets')
-parser.add_argument("ckptroot", default='/root/ckpt')
+parser.add_argument("-dataroot", default='/root/datasets', type=str)
+parser.add_argument("-ckptroot", default='/root/ckpt', type=str)
+parser.add_argument("-urlTransferFrom", default=None, type=str)
 args = parser.parse_args()
 
 name = args.name
@@ -74,25 +77,27 @@ os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 reporoot = join(home, 'repo')
 ckptroot = join(home, 'ckpt')
-ckptpath = join(ckptroot, name)
-if args.name=='debug': shutil.rmtree(ckptpath, ignore_errors=True)
-os.makedirs(ckptpath, exist_ok=True)
+args.ckptpath = join(ckptroot, name)
+if args.name=='debug': shutil.rmtree(args.ckptpath, ignore_errors=True)
+os.makedirs(args.ckptpath, exist_ok=True)
 
-class FilePaths:
-  fnCkptpath = ckptpath
-  urlTransferFrom = 'https://www.dropbox.com/sh/vpgg5yah4hc0vjg/AADi2L6hDxXUn40JZPKus4ADa?dl=0'
-  fnCharList = join(ckptpath, 'charList.txt')
-  fnCorpus = join(ckptpath, 'corpus.txt')
-  fnAccuracy = join(ckptpath, 'accuracy.txt')
-  # fnTrain = '/data/home/jdegange/vision/digitsdataset2/' # mnist digit sequences
-  fnTrain = ['/root/datasets/htr_assets/crowdsource/processed/',
-             # '/root/datasets/htr_assets/nw_empty_patches/train/',
-             ]
-  fnTest = ['/root/datasets/htr_assets/nw_im_crop_curated/',
-            # '/root/datasets/htr_assets/nw_empty_patches/test/',
-            ]
-  if args.iam: fnTrain = join(home, 'datasets/iam_handwriting/')
-  fnInfer = join(home, 'datasets', 'htr_debug', 'trainbold.png')
+
+
+# class FilePaths:
+#   fnCkptpath = args.ckptpath
+#   urlTransferFrom = 'https://www.dropbox.com/sh/vpgg5yah4hc0vjg/AADi2L6hDxXUn40JZPKus4ADa?dl=0'
+#   fnCharList = join(args.ckptpath, 'charList.txt')
+#   fnCorpus = join(args.ckptpath, 'corpus.txt')
+#   fnAccuracy = join(args.ckptpath, 'accuracy.txt')
+#   # fnTrain = '/data/home/jdegange/vision/digitsdataset2/' # mnist digit sequences
+#   fnTrain = ['/root/datasets/htr_assets/crowdsource/processed/',
+#              # '/root/datasets/htr_assets/nw_empty_patches/train/',
+#              ]
+#   fnTest = ['/root/datasets/htr_assets/nw_im_crop_curated/',
+#             # '/root/datasets/htr_assets/nw_empty_patches/test/',
+#             ]
+#   if args.iam: fnTrain = join(home, 'datasets/iam_handwriting/')
+#   fnInfer = join(home, 'datasets', 'htr_debug', 'trainbold.png')
 
 def main():
   "main function"
@@ -110,30 +115,45 @@ def main():
     # loader = DataLoader(FilePaths.fnTrain, args.batchsize, args.imgsize, Model.maxTextLen, args)
     # testloader = DataLoader(FilePaths.fnTest, args.batchsize, args.imgsize, Model.maxTextLen, args, is_test=True)
 
-    iam = IAM(args.dataroot)
-    eydigits = EyDigitStrings(args.dataroot)
+    # tnansforms
+    transform_train = transforms.Compose([
+      # transforms.RandomCrop(32, padding=4),
+      # transforms.RandomHorizontalFlip(),
+      # transforms.ToTensor(),
+      # transforms.Normalize(datamean, datastd),
+      lambda img: cv2.resize(img, (32,128), interpolation=cv2.INTER_CUBIC),
+    ])
 
-    concatdataset = ConcatDataset([iam, eydigits]) # concatenate the multiple datasets
-    testloader = DataLoader(concatdataset, batch_size=100, shuffle=False, num_workers=num_workers)
+    # instantiate datasets
+    iam = IAM(args.dataroot, transform=transform_train)
+    eydigits = EyDigitStrings(args.dataroot, transform=transform_train)
+
+    # concatenate datasets
+    concat = ConcatDataset([iam, eydigits]) # concatenate the multiple datasets
+    idxTrain = int( .9 * len(concat) )
+    trainset, testset = random_split(concat, [idxTrain, len(concat)-idxTrain])
+    trainloader = DataLoader(trainset, batch_size=args.batchsize, shuffle=True, num_workers=4)
+    testloader = DataLoader(testset, batch_size=args.batchsize, shuffle=False, num_workers=2)
 
     # save characters of model for inference mode
-    open(FilePaths.fnCharList, 'w').write(str().join(loader.charList))
+    charlist = list(set.union(set(iam.charList),set(eydigits.charList)))
+    open(join(args.ckptpath, 'charList.txt'), 'w').write(str().join(charlist))
 
-    # save words contained in dataset into file
-    open(FilePaths.fnCorpus, 'w').write(str(' ').join(loader.trainWords + loader.validationWords))
+    # # save words contained in dataset into file
+    # open(FilePaths.fnCorpus, 'w').write(str(' ').join(loader.trainWords + loader.validationWords))
 
     # execute training or validation
     if args.train:
-      model = Model(args, loader.charList, decoderType, FilePaths=FilePaths)
-      train(model, loader, testloader)
+      model = Model(args, charlist, decoderType)
+      train(model, trainloader, testloader)
     elif args.validate:
-      model = Model(args, loader.charList, decoderType, mustRestore=True, FilePaths=FilePaths)
-      validate(model, loader)
+      model = Model(args, charlist, decoderType, mustRestore=True)
+      validate(model, testloader)
 
   # infer text on test image
   else:
-    print(open(FilePaths.fnAccuracy).read())
-    model = Model(args, open(FilePaths.fnCharList).read(), decoderType, mustRestore=True, FilePaths=FilePaths)
+    print(open(join(args.ckptpath, 'accuracy.txt')).read())
+    model = Model(args, open(join(args.ckptpath, 'charList.txt')).read(), decoderType, mustRestore=True)
     infer(model, FilePaths.fnInfer)
 
 def train(model, loader, testloader=None):
@@ -144,21 +164,26 @@ def train(model, loader, testloader=None):
     epoch += 1; print('Epoch:', epoch, ' Training...')
 
     # train
-    loader.trainSet()
     counter = 0
-    while loader.hasNext():
-      iterInfo = loader.getIteratorInfo()
-      batch = loader.getNext()
-      loss = model.trainBatch(batch)
-      step = iterInfo[0]+(epoch-1)*iterInfo[1]
+    step = 0
+    for idx, (images, labels) in enumerate(loader):
 
-      if np.mod(iterInfo[0],110)==0:
-        print('TRAIN: Batch:', iterInfo[0], '/', iterInfo[1], 'Loss:', loss)
+      # convert torchtensor to numpy
+      images = images.numpy()
+
+      # train batch
+      loss = model.trainBatch(images, labels)
+      step += 1
+
+      # save training status
+      if np.mod(idx,110)==0:
+        print('TRAIN: Batch:', idx/len(loader), 'Loss:', loss)
         experiment.log_metric('train/loss', loss, step)
 
-      if epoch==1 and counter<5: # log images
-        text = batch.gtTexts[counter]
-        utils.log_image(experiment, batch.imgs[0], text, 'train', ckptpath, counter, epoch)
+      # log images
+      if epoch==1 and counter<5:
+        text = labels[counter]
+        utils.log_image(experiment, images[counter], text, 'train', args.ckptpath, counter, epoch)
         counter += 1
 
     # validate
@@ -178,7 +203,7 @@ def train(model, loader, testloader=None):
       bestCharErrorRate = charErrorRate
       noImprovementSince = 0
       model.save(epoch)
-      open(FilePaths.fnAccuracy, 'w').write(
+      open(join(args.ckptpath, 'accuracy.txt'), 'w').write(
         'Validation character error rate of saved model: %f%%' % (charErrorRate * 100.0))
     else:
       print('Character error rate not improved')
@@ -214,12 +239,12 @@ def validate(model, loader, epoch, is_testing=False):
 
       if is_testing and epoch==args.epochEnd:
         text = ' '.join(['[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + batch.gtTexts[i] + '"', '->', '"' + recognized[i] + '"'])
-        utils.log_image(experiment, batch.imgs[i], text, 'test-'+('ok' if dist==0 else 'err'), ckptpath, counter, epoch)
+        utils.log_image(experiment, batch.imgs[i], text, 'test-'+('ok' if dist==0 else 'err'), args.ckptpath, counter, epoch)
         counter += 1
 
     if epoch==1 and counter<5 and not is_testing: # log images
       text = ' '.join(['[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + batch.gtTexts[i] + '"', '->', '"' + recognized[i] + '"'])
-      utils.log_image(experiment, batch.imgs[i], text, 'valid', ckptpath, counter, epoch)
+      utils.log_image(experiment, batch.imgs[i], text, 'valid', args.ckptpath, counter, epoch)
       counter += 1
 
 

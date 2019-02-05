@@ -133,7 +133,7 @@ class IRS(data.Dataset):
 
     return img, label
 
-dataroot = join(home,'datasets')
-iam = IAM(dataroot)
-ey = EyDigitStrings(dataroot)
-irs = IRS(dataroot)
+# dataroot = join(home,'datasets')
+# iam = IAM(dataroot)
+# ey = EyDigitStrings(dataroot)
+# irs = IRS(dataroot)
