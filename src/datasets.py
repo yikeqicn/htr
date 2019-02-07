@@ -24,9 +24,10 @@ class IAM(data.Dataset):
     maybe_download('https://www.dropbox.com/sh/tdd0784neuv9ysh/AABm3gxtjQIZ2R9WZ-XR9Kpra?dl=0',
                    'iam_handwriting', root, 'folder')
     if exists(join(self.root,'words.tgz')):
-      os.makedirs(join(self.root, 'words'))
-      os.system('tar xvzf '+join(self.root, 'words.tgz')+' --directory '+join(self.root, 'words'))
-      os.system('rm '+join(self.root,'words.tgz'))
+      if not exists(join(self.root, 'words')):
+        os.makedirs(join(self.root, 'words'))
+        os.system('tar xvzf '+join(self.root, 'words.tgz')+' --directory '+join(self.root, 'words'))
+        os.system('rm '+join(self.root,'words.tgz'))
 
     # begin collecting all words in IAM dataset frm the words.txt summary file at the root of IAM directiory
     labelsFile = open(join(self.root,'words.txt'))
@@ -79,7 +80,8 @@ class EyDigitStrings(data.Dataset):
 
     self.transform = transform
     self.root = join(root, 'htr_assets/crowdsource/processed')
-
+    maybe_download(source_url='https://www.dropbox.com/s/dsg41kaajrfvfvj/htr_assets.zip?dl=0',
+                   filename='htr_assets', target_directory=root, filetype='zip') # qyk added, the source is yq's dropbox
     # custom dataset loader
     allfiles = glob(join(self.root, '**/*.jpg'), recursive=True)
     labels = [basename(f)[:-4] if basename(f).find('empty-')==-1 else '_' for f in allfiles] # if filename has 'empty-', then the ground truth is nothing
@@ -106,7 +108,7 @@ class EyDigitStrings(data.Dataset):
 
 class IRS(data.Dataset):
 
-  def __init__(self, root, transform=None):
+  def __init__(self, root='/root/datasets', transform=None):
 
     self.transform = transform
     self.root = join(root, 'irs_handwriting')
@@ -117,6 +119,9 @@ class IRS(data.Dataset):
     allfiles = glob(join(self.root, '**/'*folder_depth+'*.jpg'))
     labels = [basename(f)[:-4] for f in allfiles]
     self.samples = list(zip(allfiles, labels))
+    # makes list of characters
+    chars = set.union(*[set(l) for l in labels])
+    self.charList = sorted(list(chars))
 
   def __len__(self):
     return len(self.samples)
@@ -132,6 +137,41 @@ class IRS(data.Dataset):
       img = self.transform(img)
 
     return img, label
+
+class PRT(data.Dataset):
+
+  def __init__(self, root='/root/datasets', transform=None):
+
+    self.transform = transform
+    self.root = join(root, 'img_print_100000')
+    maybe_download(source_url='https://www.dropbox.com/s/cbhpy6clfi9a5lz/img_print_100000_clean.zip?dl=0',filename='img_print_100000_clean', target_directory=root, filetype='zip')
+    #yq patch delete unrecognized non-english samples in linux
+    #os.system('find '+ root+' -maxdepth 1 -name "*.jpg" -type f -delete') find ./logs/examples -maxdepth 1 -name "*.log"
+    if exists(join(root, 'img_print_100000_clean')): os.system('mv ' + join(root, 'img_print_100000_clean') + ' ' + self.root)
+
+    folder_depth = 1
+    allfiles = glob(join(self.root, '**/' * folder_depth + '*.jpg'))
+    labels = [basename(f)[:-4] for f in allfiles]
+    self.samples = list(zip(allfiles, labels))
+    # makes list of characters
+    chars = set.union(*[set(l) for l in labels])
+    self.charList = sorted(list(chars))
+
+  def __len__(self):
+    return len(self.samples)
+
+  def __str__(self):
+    return 'Printing dataset. Data location: ' + self.root + ', Length: ' + str(len(self))
+
+  def __getitem__(self, idx):
+
+    label = self.samples[idx][1]
+    img = cv2.imread(self.samples[idx][0], cv2.IMREAD_GRAYSCALE)
+    if self.transform:
+      img = self.transform(img)
+
+    return img, label
+
 
 # dataroot = join(home,'datasets')
 # iam = IAM(dataroot)

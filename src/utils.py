@@ -23,6 +23,7 @@ def maybe_download(source_url, filename, target_directory, filetype='folder', fo
   if os.path.exists(filepath) and not force:
     print(filepath+' already exists, skipping download')
   else:
+  #if 1 and filename!='iam_handwriting':
     if not os.path.exists(target_directory):
       os.system('mkdir -p '+target_directory)
     if filetype=='folder':

@@ -1,12 +1,12 @@
 from comet_ml import Experiment
-experiment = Experiment(api_key="vPCPPZrcrUBitgoQkvzxdsh9k", parse_args=False, project_name='htr')
-
+experiment = Experiment(api_key="YkPEmantOag1R1VOJmXz11hmt", parse_args=False, project_name='htr')
+# yike: changed to my comet for debug
 import sys
 import argparse
 import cv2
 import editdistance
 import numpy as np
-from datasets import EyDigitStrings, IAM
+from datasets import EyDigitStrings, IAM, IRS, PRT
 from torch.utils.data import DataLoader, ConcatDataset, random_split
 import torchvision
 import torchvision.transforms as transforms
@@ -22,6 +22,8 @@ import utils
 import sys
 import socket
 home = os.environ['HOME']
+
+
 
 # basic operations
 parser = argparse.ArgumentParser()
@@ -121,22 +123,26 @@ def main():
       # transforms.RandomHorizontalFlip(),
       # transforms.ToTensor(),
       # transforms.Normalize(datamean, datastd),
-      lambda img: cv2.resize(img, (32,128), interpolation=cv2.INTER_CUBIC),
+      lambda img: cv2.resize(img, (args.imgsize[1],args.imgsize[0]), interpolation=cv2.INTER_CUBIC),#(img, (32,128), interpolation=cv2.INTER_CUBIC),
     ])
 
     # instantiate datasets
     iam = IAM(args.dataroot, transform=transform_train)
     eydigits = EyDigitStrings(args.dataroot, transform=transform_train)
+    printed = PRT(args.dataroot,transform=transform_train) # yike todo
+
+    irs = IRS(args.dataroot,transform=transform_train) #yike todo
+
 
     # concatenate datasets
-    concat = ConcatDataset([iam, eydigits]) # concatenate the multiple datasets
+    concat = ConcatDataset([iam, eydigits,irs,printed]) # concatenate the multiple datasets
     idxTrain = int( .9 * len(concat) )
     trainset, testset = random_split(concat, [idxTrain, len(concat)-idxTrain])
     trainloader = DataLoader(trainset, batch_size=args.batchsize, shuffle=True, num_workers=4)
     testloader = DataLoader(testset, batch_size=args.batchsize, shuffle=False, num_workers=2)
 
     # save characters of model for inference mode
-    charlist = list(set.union(set(iam.charList),set(eydigits.charList)))
+    charlist = list(set.union(set(iam.charList),set(eydigits.charList),set(irs.charList),set(printed.charList)))
     open(join(args.ckptpath, 'charList.txt'), 'w').write(str().join(charlist))
 
     # # save words contained in dataset into file
@@ -148,7 +154,7 @@ def main():
       train(model, trainloader, testloader)
     elif args.validate:
       model = Model(args, charlist, decoderType, mustRestore=True)
-      validate(model, testloader)
+      validate(model, testloader)##
 
   # infer text on test image
   else:
