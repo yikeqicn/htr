@@ -81,24 +81,6 @@ args.ckptpath = join(ckptroot, name)
 if args.name=='debug': shutil.rmtree(args.ckptpath, ignore_errors=True)
 os.makedirs(args.ckptpath, exist_ok=True)
 
-
-
-# class FilePaths:
-#   fnCkptpath = args.ckptpath
-#   urlTransferFrom = 'https://www.dropbox.com/sh/vpgg5yah4hc0vjg/AADi2L6hDxXUn40JZPKus4ADa?dl=0'
-#   fnCharList = join(args.ckptpath, 'charList.txt')
-#   fnCorpus = join(args.ckptpath, 'corpus.txt')
-#   fnAccuracy = join(args.ckptpath, 'accuracy.txt')
-#   # fnTrain = '/data/home/jdegange/vision/digitsdataset2/' # mnist digit sequences
-#   fnTrain = ['/root/datasets/htr_assets/crowdsource/processed/',
-#              # '/root/datasets/htr_assets/nw_empty_patches/train/',
-#              ]
-#   fnTest = ['/root/datasets/htr_assets/nw_im_crop_curated/',
-#             # '/root/datasets/htr_assets/nw_empty_patches/test/',
-#             ]
-#   if args.iam: fnTrain = join(home, 'datasets/iam_handwriting/')
-#   fnInfer = join(home, 'datasets', 'htr_debug', 'trainbold.png')
-
 def main():
   "main function"
 
@@ -110,10 +92,6 @@ def main():
 
   # train or validate on IAM dataset
   if args.train or args.validate:
-
-    # load training data, create TF model
-    # loader = DataLoader(FilePaths.fnTrain, args.batchsize, args.imgsize, Model.maxTextLen, args)
-    # testloader = DataLoader(FilePaths.fnTest, args.batchsize, args.imgsize, Model.maxTextLen, args, is_test=True)
 
     # tnansforms
     transform_train = transforms.Compose([
@@ -127,6 +105,8 @@ def main():
     # instantiate datasets
     iam = IAM(args.dataroot, transform=transform_train)
     eydigits = EyDigitStrings(args.dataroot, transform=transform_train)
+    printed = PrintedDataset(args.dataroot, transform=transform_train)
+    irs = IRS(args.dataset, transform=transform_train)
 
     # concatenate datasets
     concat = ConcatDataset([iam, eydigits]) # concatenate the multiple datasets
@@ -140,7 +120,7 @@ def main():
     open(join(args.ckptpath, 'charList.txt'), 'w').write(str().join(charlist))
 
     # # save words contained in dataset into file
-    # open(FilePaths.fnCorpus, 'w').write(str(' ').join(loader.trainWords + loader.validationWords))
+    open(FilePaths.fnCorpus, 'w').write(str(' ').join(loader.trainWords + loader.validationWords))
 
     # execute training or validation
     if args.train:
@@ -176,7 +156,7 @@ def train(model, loader, testloader=None):
       step += 1
 
       # save training status
-      if np.mod(idx,110)==0:
+      if np.mod(idx,100)==0:
         print('TRAIN: Batch:', idx/len(loader), 'Loss:', loss)
         experiment.log_metric('train/loss', loss, step)
 
