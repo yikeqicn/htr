@@ -154,7 +154,7 @@ def main():
       train(model, trainloader, testloader)
     elif args.validate:
       model = Model(args, charlist, decoderType, mustRestore=True)
-      validate(model, testloader)##
+      validate(model, testloader)
 
   # infer text on test image
   else:
