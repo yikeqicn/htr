@@ -117,7 +117,7 @@ def main():
     # loader = DataLoader(FilePaths.fnTrain, args.batchsize, args.imgsize, Model.maxTextLen, args)
     # testloader = DataLoader(FilePaths.fnTest, args.batchsize, args.imgsize, Model.maxTextLen, args, is_test=True)
 
-    # tnansforms
+    # tnansforms#
     transform_train = transforms.Compose([
       #lambda img: (np.zeros([args.imgsize[1], args.imgsize[0]]) if img is None or np.min(img.shape) <= 1 else cv2.resize(img, (args.imgsize[1],args.imgsize[0]), interpolation=cv2.INTER_CUBIC)),
       #lambda img: np.zeros([args.imgsize[1], args.imgsize[0]]) if (img is None or np.min(img.shape) <= 1) else cv2.resize(img, (args.imgsize[1],args.imgsize[0]), interpolation=cv2.INTER_CUBIC)
