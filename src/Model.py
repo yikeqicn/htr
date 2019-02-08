@@ -128,7 +128,8 @@ class Model:
                                    tf.placeholder(tf.int64, [2]))
     # calc loss for batch
     self.seqLen = tf.placeholder(tf.int32, [None])
-    loss = tf.nn.ctc_loss(labels=self.gtTexts, inputs=ctcIn3dTBC, sequence_length=self.seqLen, ctc_merge_repeated=True)
+
+    loss = tf.nn.ctc_loss(labels=self.gtTexts, inputs=ctcIn3dTBC, sequence_length=self.seqLen, ctc_merge_repeated=True)#, ignore_longer_outputs_than_inputs=True) #qyk
 
     # decoder: either best path decoding or beam search decoding
     if self.decoderType == DecoderType.BestPath:

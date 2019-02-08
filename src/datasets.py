@@ -51,7 +51,10 @@ class IAM(data.Dataset):
       label = ' '.join(lineSplit[8:])
 
       # put sample into list
-      self.samples.append( (fileName, label) )
+      # qyk exclude empty images
+      img_test=cv2.imread(fileName, cv2.IMREAD_GRAYSCALE) #qyk
+      if not (img_test is None or np.min(img_test.shape) <= 1): #qyk
+        self.samples.append( (fileName, label) ) #qyk
 
       # makes list of characters
       chars = chars.union(set(list(label)))
@@ -69,6 +72,8 @@ class IAM(data.Dataset):
     # img = preprocess(cv2.imread(self.samples[i][0], cv2.IMREAD_GRAYSCALE),
     #                  args.imgsize, self.args, False, is_testing)
     img = cv2.imread(self.samples[idx][0], cv2.IMREAD_GRAYSCALE)
+    #print(self.samples[idx][0])#
+    #print(self.samples[idx][1]) #for debug purpose
     if self.transform:
       img = self.transform(img)
 
@@ -151,6 +156,7 @@ class PRT(data.Dataset):
 
     folder_depth = 1
     allfiles = glob(join(self.root, '**/' * folder_depth + '*.jpg'))
+    allfiles = [f for f in allfiles if len(basename(f))-4<=25 and (not '#U' in f)] # screen out non-recognized characters qyk
     labels = [basename(f)[:-4] for f in allfiles]
     self.samples = list(zip(allfiles, labels))
     # makes list of characters

@@ -60,7 +60,7 @@ parser.add_argument("-bc_mode", default=True, type=bool, help="bottleneck and co
 parser.add_argument("-rnndim", default=256, type=int, help='rnn dimenstionality')
 parser.add_argument("-rnnsteps", default=32, type=int, help='number of desired time steps (image slices) to feed rnn')
 # img size
-parser.add_argument("-imgsize", default=[128,32], type=int, nargs='+')
+parser.add_argument("-imgsize", default=[128,32], type=int, nargs='+') #qyk change to 64, default 128,32
 # testset crop
 parser.add_argument("-crop_r1", default=3, type=int)
 parser.add_argument("-crop_r2", default=28, type=int)
@@ -119,10 +119,8 @@ def main():
 
     # tnansforms
     transform_train = transforms.Compose([
-      # transforms.RandomCrop(32, padding=4),
-      # transforms.RandomHorizontalFlip(),
-      # transforms.ToTensor(),
-      # transforms.Normalize(datamean, datastd),
+      #lambda img: (np.zeros([args.imgsize[1], args.imgsize[0]]) if img is None or np.min(img.shape) <= 1 else cv2.resize(img, (args.imgsize[1],args.imgsize[0]), interpolation=cv2.INTER_CUBIC)),
+      #lambda img: np.zeros([args.imgsize[1], args.imgsize[0]]) if (img is None or np.min(img.shape) <= 1) else cv2.resize(img, (args.imgsize[1],args.imgsize[0]), interpolation=cv2.INTER_CUBIC)
       lambda img: cv2.resize(img, (args.imgsize[1],args.imgsize[0]), interpolation=cv2.INTER_CUBIC),#(img, (32,128), interpolation=cv2.INTER_CUBIC),
     ])
 
@@ -178,7 +176,10 @@ def train(model, loader, testloader=None):
       images = images.numpy()
 
       # train batch
-      loss = model.trainBatch(images, labels)
+      try:
+        loss = model.trainBatch(images, labels)
+      except:
+        print(labels)
       step += 1
 
       # save training status
