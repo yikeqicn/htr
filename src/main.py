@@ -7,7 +7,7 @@ import cv2
 import editdistance
 import numpy as np
 from datasets import EyDigitStrings, IAM, IRS, PRT
-from torch.utils.data import DataLoader, ConcatDataset, random_split
+from torch.utils.data import DataLoader, ConcatDataset, random_split#, SequentialSampler #yike: add SequentialSampler
 import torchvision
 import torchvision.transforms as transforms
 # from DataLoader import DataLoader, Batch
@@ -137,7 +137,8 @@ def main():
     idxTrain = int( .9 * len(concat) )
     trainset, testset = random_split(concat, [idxTrain, len(concat)-idxTrain])
     trainloader = DataLoader(trainset, batch_size=args.batchsize, shuffle=True, num_workers=4)
-    testloader = DataLoader(testset, batch_size=args.batchsize, shuffle=False, num_workers=2)
+    #testloader = DataLoader(testset, batch_size=args.batchsize, shuffle=False, num_workers=2) # yike: feel not right
+    testloader=DataLoader(testset, batch_size=testset.__len__(),shuffle=False, num_workers=2) # yike: all test data included, no sampling. validation is not training. , sampler=SequentialSampler
 
     # save characters of model for inference mode
     charlist = list(set.union(set(iam.charList),set(eydigits.charList),set(irs.charList),set(printed.charList)))
@@ -228,7 +229,7 @@ def validate(model, loader, epoch, is_testing=False):
   "validate NN"
   if not is_testing: print('Validating NN')
   else: print('Testing NN')
-  loader.validationSet()
+  #loader.validationSet() # comment out by yike. see row 141
   numCharErr, numCharTotal, numWordOK, numWordTotal = 0, 0, 0, 0
   plt.figure(figsize=(6,2))
   counter = 0

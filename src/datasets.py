@@ -120,7 +120,7 @@ class IRS(data.Dataset):
     maybe_download(source_url='https://www.dropbox.com/s/54jarzcb0mju32d/img_cropped_irs.zip?dl=0', filename='irs_handwriting', target_directory=root, filetype='zip')
     if exists(join(root, 'img_cropped_irs')): os.system('mv '+join(root, 'img_cropped_irs')+' '+self.root)
 
-    folder_depth = 2
+    folder_depth = 3
     allfiles = glob(join(self.root, '**/'*folder_depth+'*.jpg'))
     labels = [basename(f)[:-4] for f in allfiles]
     self.samples = list(zip(allfiles, labels))
@@ -156,7 +156,7 @@ class PRT(data.Dataset):
 
     folder_depth = 1
     allfiles = glob(join(self.root, '**/' * folder_depth + '*.jpg'))
-    allfiles = [f for f in allfiles if len(basename(f))-4<=25 and (not '#U' in f)] # screen out non-recognized characters qyk
+    allfiles = [f for f in allfiles if len(basename(f))-4<=25 and (not '#U' in f) and (not '---' in f)] # screen out non-recognized characters qyk
     labels = [basename(f)[:-4] for f in allfiles]
     self.samples = list(zip(allfiles, labels))
     # makes list of characters
