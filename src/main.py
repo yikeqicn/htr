@@ -60,7 +60,7 @@ parser.add_argument("-bc_mode", default=True, type=bool, help="bottleneck and co
 parser.add_argument("-rnndim", default=256, type=int, help='rnn dimenstionality')
 parser.add_argument("-rnnsteps", default=32, type=int, help='number of desired time steps (image slices) to feed rnn')
 # img size
-parser.add_argument("-imgsize", default=[128,32], type=int, nargs='+')
+parser.add_argument("-imgsize", default=[128,32], type=int, nargs='+') #qyk change to 64, default 128,32
 # testset crop
 parser.add_argument("-crop_r1", default=3, type=int)
 parser.add_argument("-crop_r2", default=28, type=int)

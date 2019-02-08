@@ -151,6 +151,7 @@ class PRT(data.Dataset):
 
     folder_depth = 1
     allfiles = glob(join(self.root, '**/' * folder_depth + '*.jpg'))
+    allfiles = [f for f in allfiles if len(basename(f))-4<=25] # screen out non-recognized characters qyk
     labels = [basename(f)[:-4] for f in allfiles]
     self.samples = list(zip(allfiles, labels))
     # makes list of characters
