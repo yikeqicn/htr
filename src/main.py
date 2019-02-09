@@ -134,6 +134,7 @@ def main():
 
     # concatenate datasets
     concat = ConcatDataset([iam, eydigits,irs,printed]) # concatenate the multiple datasets
+    #concat=iam
     idxTrain = int( .9 * len(concat) )
     trainset, testset = random_split(concat, [idxTrain, len(concat)-idxTrain])
     trainloader = DataLoader(trainset, batch_size=args.batchsize, shuffle=True, num_workers=4)
@@ -193,7 +194,9 @@ def train(model, loader, testloader=None):
         text = labels[counter]
         utils.log_image(experiment, images[counter], text, 'train', args.ckptpath, counter, epoch)
         counter += 1
-
+      #for debug
+      #if idx >2:
+      #  break
     # validate
     charErrorRate, wordAccuracy= validate(model, loader, epoch)
     experiment.log_metric('valid/cer', charErrorRate, step)
