@@ -6,6 +6,7 @@ import argparse
 import cv2
 import editdistance
 import numpy as np
+import PIL
 from datasets import EyDigitStrings, IAM, IRS, PRT
 from torch.utils.data import DataLoader, ConcatDataset, random_split#, SequentialSampler #yike: add SequentialSampler
 import torchvision
@@ -121,8 +122,11 @@ def main():
     transform_train = transforms.Compose([
       #lambda img: (np.zeros([args.imgsize[1], args.imgsize[0]]) if img is None or np.min(img.shape) <= 1 else cv2.resize(img, (args.imgsize[1],args.imgsize[0]), interpolation=cv2.INTER_CUBIC)),
       #lambda img: np.zeros([args.imgsize[1], args.imgsize[0]]) if (img is None or np.min(img.shape) <= 1) else cv2.resize(img, (args.imgsize[1],args.imgsize[0]), interpolation=cv2.INTER_CUBIC)
-      lambda img: cv2.resize(img, (args.imgsize[1],args.imgsize[0]), interpolation=cv2.INTER_CUBIC),#(img, (32,128), interpolation=cv2.INTER_CUBIC),
+      transforms.Lambda(lambda img: cv2.resize(img, (args.imgsize[1],args.imgsize[0]), interpolation=cv2.INTER_CUBIC)),#(img, (32,128), interpolation=cv2.INTER_CUBIC),
+      #lambda img: cv2.resize(img, (args.imgsize[1], args.imgsize[0]), interpolation=cv2.INTER_CUBIC),
     ])
+
+    # yike: to use torch.transform.classes, please convert numpy to PIL first. i.e.transforms.Resize(size=(args.imgsize[1], args.imgsize[0]), interpolation=PIL.Image.BICUBIC)
 
     # instantiate datasets
     iam = IAM(args.dataroot, transform=transform_train)
@@ -134,11 +138,13 @@ def main():
 
     # concatenate datasets
     concat = ConcatDataset([iam, eydigits,irs,printed]) # concatenate the multiple datasets
+    concat= printed
+    #concat=iam
     idxTrain = int( .9 * len(concat) )
     trainset, testset = random_split(concat, [idxTrain, len(concat)-idxTrain])
-    trainloader = DataLoader(trainset, batch_size=args.batchsize, shuffle=True, num_workers=4)
-    #testloader = DataLoader(testset, batch_size=args.batchsize, shuffle=False, num_workers=2) # yike: feel not right
-    testloader=DataLoader(testset, batch_size=testset.__len__(),shuffle=False, num_workers=2) # yike: all test data included, no sampling. validation is not training. , sampler=SequentialSampler
+    trainloader = DataLoader(trainset, batch_size=args.batchsize, shuffle=True, drop_last=True,num_workers=4)
+    testloader = DataLoader(testset, batch_size=args.batchsize, shuffle=False, drop_last=True,num_workers=2) # yike: feel not right
+    #testloader=DataLoader(testset, batch_size=args.batchsize,shuffle=False, num_workers=2) # yike: all test data included, no sampling. validation is not training. , sampler=SequentialSampler
 
     # save characters of model for inference mode
     charlist = list(set.union(set(iam.charList),set(eydigits.charList),set(irs.charList),set(printed.charList)))
@@ -193,7 +199,9 @@ def train(model, loader, testloader=None):
         text = labels[counter]
         utils.log_image(experiment, images[counter], text, 'train', args.ckptpath, counter, epoch)
         counter += 1
-
+      #for debug
+      #if idx >2:
+      #  break
     # validate
     charErrorRate, wordAccuracy= validate(model, loader, epoch)
     experiment.log_metric('valid/cer', charErrorRate, step)
@@ -233,6 +241,41 @@ def validate(model, loader, epoch, is_testing=False):
   numCharErr, numCharTotal, numWordOK, numWordTotal = 0, 0, 0, 0
   plt.figure(figsize=(6,2))
   counter = 0
+  '''
+  yike: convert to troch dataloader, test
+  '''
+  for idx, (images, labels) in enumerate(loader):
+    images=images.numpy()
+    recognized=model.inferBatch(images)
+
+    for i in range(len(recognized)):
+      numWordOK += 1 if labels[i] == recognized[i] else 0 #batch.gtTexts[i]
+      numWordTotal += 1
+      dist = editdistance.eval(recognized[i], labels[i])# batch.gtTexts[i])
+      numCharErr += dist
+      numCharTotal += len(labels[i]) #batch.gtTexts[i]
+
+      if is_testing and epoch==args.epochEnd: #batch.gtTexts[i]
+        text = ' '.join(['[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + labels[i] + '"', '->', '"' + recognized[i] + '"'])
+        utils.log_image(experiment, images[i], text, 'test-'+('ok' if dist==0 else 'err'), args.ckptpath, counter, epoch)
+        counter += 1 # previous batch.imgs[i]
+
+    if epoch==1 and counter<5 and not is_testing: # log images
+      text = ' '.join(['[OK]' if dist == 0 else '[ERR:%d]' % dist, '"' + labels[i] + '"', '->', '"' + recognized[i] + '"'])
+      utils.log_image(experiment, images[i], text, 'valid', args.ckptpath, counter, epoch) #batch.gtTexts[i]
+      counter += 1 #batch.imgs[i]
+
+
+  # print validation result
+  charErrorRate = numCharErr / numCharTotal
+  wordAccuracy = numWordOK / numWordTotal
+  print('VALID: Character error rate: %f%%. Word accuracy: %f%%.' % (charErrorRate * 100.0, wordAccuracy * 100.0))
+  return charErrorRate, wordAccuracy
+
+  '''
+  test end
+  '''
+''' comment out original validate
   while loader.hasNext():
 
     iterInfo = loader.getIteratorInfo()
@@ -261,7 +304,7 @@ def validate(model, loader, epoch, is_testing=False):
   wordAccuracy = numWordOK / numWordTotal
   print('VALID: Character error rate: %f%%. Word accuracy: %f%%.' % (charErrorRate * 100.0, wordAccuracy * 100.0))
   return charErrorRate, wordAccuracy
-
+'''
 
 def infer(model, fnImg):
   "recognize text in image provided by file path"

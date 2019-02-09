@@ -32,7 +32,6 @@ class Model:
 
     # Input
     self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, args.imgsize[0], args.imgsize[1]))
-
     # CNN
     if args.nondensenet:
       cnnOut4d = self.setupCNN(self.inputImgs)
@@ -260,12 +259,15 @@ class Model:
     self.batchesTrained += 1
     return lossVal
 
-  def inferBatch(self, batch):
+  def inferBatch(self, imgs): # modify to compatible to torch. previous def inferBatch(self, batch)
     "feed a batch into the NN to recngnize the texts"
+    '''if batch to infer less than args.batchsize, error'''
+
     decoded = self.sess.run(self.decoder,
-                            {self.inputImgs: batch.imgs, self.seqLen: [Model.maxTextLen] * self.batchsize, self.is_training: False})
-    return self.decoderOutputToText(decoded)
+                            {self.inputImgs: imgs, self.seqLen: [Model.maxTextLen] * self.batchsize, self.is_training: False})
+
+    return self.decoderOutputToText(decoded) # previous batch.imgs
 
   def save(self, epoch):
     "save model to file"
-    self.saver.save(self.sess, join(args.ckptpath, 'model'), global_step=epoch)
+    self.saver.save(self.sess, join(self.args.ckptpath, 'model'), global_step=epoch)

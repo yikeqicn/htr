@@ -52,13 +52,14 @@ class IAM(data.Dataset):
 
       # put sample into list
       # qyk exclude empty images
-      img_test=cv2.imread(fileName, cv2.IMREAD_GRAYSCALE) #qyk
-      if not (img_test is None or np.min(img_test.shape) <= 1): #qyk
-        self.samples.append( (fileName, label) ) #qyk
+      if '---' not in label: # qyk: data clean
+        img_test=cv2.imread(fileName, cv2.IMREAD_GRAYSCALE) #qyk: data clean
+        if not (img_test is None or np.min(img_test.shape) <= 1): #qyk: data clean
+            self.samples.append( (fileName, label) ) #qyk
 
       # makes list of characters
-      chars = chars.union(set(list(label)))
-      self.charList = sorted(list(chars))
+            chars = chars.union(set(list(label)))
+    self.charList = sorted(list(chars))
 
   def __str__(self):
     return 'IAM words dataset. Data location: '+self.root+', Length: '+str(len(self))
@@ -156,7 +157,7 @@ class PRT(data.Dataset):
 
     folder_depth = 1
     allfiles = glob(join(self.root, '**/' * folder_depth + '*.jpg'))
-    allfiles = [f for f in allfiles if len(basename(f))-4<=25 and (not '#U' in f) and (not '---' in f)] # screen out non-recognized characters qyk
+    allfiles = [f for f in allfiles if len(basename(f))-4<=25 and len(basename(f))-4 >=1 and (not '#U' in f) and (not '---' in f)] # screen out non-recognized characters qyk
     labels = [basename(f)[:-4] for f in allfiles]
     self.samples = list(zip(allfiles, labels))
     # makes list of characters
