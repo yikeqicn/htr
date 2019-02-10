@@ -19,6 +19,7 @@ import os
 from os.path import join, basename, dirname
 import matplotlib.pyplot as plt
 import shutil
+from utils_preprocess import *
 import utils
 import sys
 import socket
@@ -122,22 +123,29 @@ def main():
     transform_train = transforms.Compose([
       #lambda img: (np.zeros([args.imgsize[1], args.imgsize[0]]) if img is None or np.min(img.shape) <= 1 else cv2.resize(img, (args.imgsize[1],args.imgsize[0]), interpolation=cv2.INTER_CUBIC)),
       #lambda img: np.zeros([args.imgsize[1], args.imgsize[0]]) if (img is None or np.min(img.shape) <= 1) else cv2.resize(img, (args.imgsize[1],args.imgsize[0]), interpolation=cv2.INTER_CUBIC)
-      transforms.Lambda(lambda img: cv2.resize(img, (args.imgsize[1],args.imgsize[0]), interpolation=cv2.INTER_CUBIC)),#(img, (32,128), interpolation=cv2.INTER_CUBIC),
+      transforms.Lambda(lambda img: cv2.resize(img, (args.imgsize[0],args.imgsize[1]), interpolation=cv2.INTER_CUBIC)),#(img, (32,128), interpolation=cv2.INTER_CUBIC),
+      transforms.Lambda(lambda img: add_artifacts(img,args)),
+     # transforms.Lambda(lambda img: img_normalize(img)),
+      transforms.Lambda(lambda img: cv2.transpose(img))
       #lambda img: cv2.resize(img, (args.imgsize[1], args.imgsize[0]), interpolation=cv2.INTER_CUBIC),
     ])
 
     # yike: to use torch.transform.classes, please convert numpy to PIL first. i.e.transforms.Resize(size=(args.imgsize[1], args.imgsize[0]), interpolation=PIL.Image.BICUBIC)
 
     # instantiate datasets
-    iam = IAM(args.dataroot, transform=transform_train)
-    eydigits = EyDigitStrings(args.dataroot, transform=transform_train)
+    #iam = IAM(args.dataroot, transform=transform_train)
+    #eydigits = EyDigitStrings(args.dataroot, transform=transform_train)
     printed = PRT(args.dataroot,transform=transform_train) # yike todo
 
-    irs = IRS(args.dataroot,transform=transform_train) #yike todo
+    #irs = IRS(args.dataroot,transform=transform_train) #yike todo
 
-
+    tst=printed.__getitem__(1)
+    print(type(tst[0]))
+    print(tst[0].shape)
+    #cv2.imshow('tst',tst[0])
+    #cv2.imwrite('/root/Engagements/test/tst1.jpg', tst[0])
     # concatenate datasets
-    concat = ConcatDataset([iam, eydigits,irs,printed]) # concatenate the multiple datasets
+    #concat = ConcatDataset([iam, eydigits,irs,printed]) # concatenate the multiple datasets
     concat= printed
     #concat=iam
     idxTrain = int( .9 * len(concat) )
@@ -147,7 +155,8 @@ def main():
     #testloader=DataLoader(testset, batch_size=args.batchsize,shuffle=False, num_workers=2) # yike: all test data included, no sampling. validation is not training. , sampler=SequentialSampler
 
     # save characters of model for inference mode
-    charlist = list(set.union(set(iam.charList),set(eydigits.charList),set(irs.charList),set(printed.charList)))
+    #charlist = list(set.union(set(iam.charList),set(eydigits.charList),set(irs.charList),set(printed.charList)))
+    charlist=printed.charList
     open(join(args.ckptpath, 'charList.txt'), 'w').write(str().join(charlist))
 
     # # save words contained in dataset into file
