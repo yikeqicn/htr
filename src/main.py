@@ -138,7 +138,7 @@ def main():
 
     # concatenate datasets
     concat = ConcatDataset([iam, eydigits,irs,printed]) # concatenate the multiple datasets
-    concat= printed
+    #concat= printed
     #concat=iam
     idxTrain = int( .9 * len(concat) )
     trainset, testset = random_split(concat, [idxTrain, len(concat)-idxTrain])
