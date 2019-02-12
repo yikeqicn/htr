@@ -59,10 +59,10 @@ parser.add_argument("-keep_prob", default=1, type=float, help='keep probability 
 parser.add_argument("-reduction", default=0.4, type=float, help='reduction factor in 1x1 conv in transition layers')
 parser.add_argument("-bc_mode", default=True, type=bool, help="bottleneck and compresssion mode")
 # rnn,  hyperparams
-parser.add_argument("-rnndim", default=256, type=int, help='rnn dimenstionality')
+parser.add_argument("-rnndim", default=256, type=int, help='rnn dimenstionality') #256
 parser.add_argument("-rnnsteps", default=32, type=int, help='number of desired time steps (image slices) to feed rnn')
 # img size
-parser.add_argument("-imgsize", default=[256,32], type=int, nargs='+') #qyk change to 64, default 128,32
+parser.add_argument("-imgsize", default=[128,32], type=int, nargs='+') #qyk default 128,32
 # testset crop
 parser.add_argument("-crop_r1", default=3, type=int)
 parser.add_argument("-crop_r2", default=28, type=int)
@@ -133,11 +133,11 @@ def main():
     # yike: to use torch.transform.classes, please convert numpy to PIL first. i.e.transforms.Resize(size=(args.imgsize[1], args.imgsize[0]), interpolation=PIL.Image.BICUBIC)
 
     # instantiate datasets
-    #iam = IAM(args.dataroot, transform=transform_train)
-    #eydigits = EyDigitStrings(args.dataroot, transform=transform_train)
+    iam = IAM(args.dataroot, transform=transform_train)
+    eydigits = EyDigitStrings(args.dataroot, transform=transform_train)
     printed = PRT(args.dataroot,transform=transform_train) # yike todo
 
-    #irs = IRS(args.dataroot,transform=transform_train) #yike todo
+    irs = IRS(args.dataroot,transform=transform_train) #yike todo
 
     tst=printed.__getitem__(1)
     print(type(tst[0]))
@@ -145,8 +145,8 @@ def main():
     #cv2.imshow('tst',tst[0])
     #cv2.imwrite('/root/Engagements/test/tst1.jpg', tst[0])
     # concatenate datasets
-    #concat = ConcatDataset([iam, eydigits,irs,printed]) # concatenate the multiple datasets
-    concat= printed
+    concat = ConcatDataset([iam, eydigits,irs,printed]) # concatenate the multiple datasets
+    #concat= printed
     #concat=iam
     idxTrain = int( .9 * len(concat) )
     trainset, testset = random_split(concat, [idxTrain, len(concat)-idxTrain])
@@ -155,8 +155,8 @@ def main():
     #testloader=DataLoader(testset, batch_size=args.batchsize,shuffle=False, num_workers=2) # yike: all test data included, no sampling. validation is not training. , sampler=SequentialSampler
 
     # save characters of model for inference mode
-    #charlist = list(set.union(set(iam.charList),set(eydigits.charList),set(irs.charList),set(printed.charList)))
-    charlist=printed.charList
+    charlist = list(set.union(set(iam.charList),set(eydigits.charList),set(irs.charList),set(printed.charList)))
+    #charlist=printed.charList
     open(join(args.ckptpath, 'charList.txt'), 'w').write(str().join(charlist))
 
     # # save words contained in dataset into file
