@@ -121,9 +121,10 @@ class IRS(data.Dataset):
     maybe_download(source_url='https://www.dropbox.com/s/54jarzcb0mju32d/img_cropped_irs.zip?dl=0', filename='irs_handwriting', target_directory=root, filetype='zip')
     if exists(join(root, 'img_cropped_irs')): os.system('mv '+join(root, 'img_cropped_irs')+' '+self.root)
 
-    folder_depth = 3
+    folder_depth = 2
     allfiles = glob(join(self.root, '**/'*folder_depth+'*.jpg'))
     labels = [basename(f)[:-4] for f in allfiles]
+    print(labels[0])
     self.samples = list(zip(allfiles, labels))
     # makes list of characters
     chars = set.union(*[set(l) for l in labels])
@@ -149,15 +150,50 @@ class PRT(data.Dataset):
   def __init__(self, root='/root/datasets', transform=None):
 
     self.transform = transform
-    self.root = join(root, 'img_print_100000')
-    maybe_download(source_url='https://www.dropbox.com/s/cbhpy6clfi9a5lz/img_print_100000_clean.zip?dl=0',filename='img_print_100000_clean', target_directory=root, filetype='zip')
+    self.root = join(root, 'img_print_100000_en')
+    maybe_download(source_url='https://www.dropbox.com/s/nbdu839yxfchdmv/img_print_100000_en.zip?dl=0',filename='img_print_100000_en', target_directory=root, filetype='zip') #'https://www.dropbox.com/s/cbhpy6clfi9a5lz/img_print_100000_clean.zip?dl=0'
     #yq patch delete unrecognized non-english samples in linux
     #os.system('find '+ root+' -maxdepth 1 -name "*.jpg" -type f -delete') find ./logs/examples -maxdepth 1 -name "*.log"
-    if exists(join(root, 'img_print_100000_clean')): os.system('mv ' + join(root, 'img_print_100000_clean') + ' ' + self.root)
+    #if exists(join(root, 'img_print_100000_en')): os.system('mv ' + join(root, 'img_print_100000_en') + ' ' + self.root)
+
+    folder_depth = 0
+    allfiles = glob(join(self.root, '**/' * folder_depth + '*.jpg'))
+    #allfiles = [f for f in allfiles if len(basename(f))-4<=25 and len(basename(f))-4 >=1 and (not '#U' in f) and (not '---' in f)] # screen out non-recognized characters qyk
+    labels = [basename(f)[:-4] for f in allfiles]
+    self.samples = list(zip(allfiles, labels))
+    # makes list of characters
+    chars = set.union(*[set(l) for l in labels])
+    self.charList = sorted(list(chars))
+
+  def __len__(self):
+    return len(self.samples)
+
+  def __str__(self):
+    return 'Printing dataset. Data location: ' + self.root + ', Length: ' + str(len(self))
+
+  def __getitem__(self, idx):
+
+    label = self.samples[idx][1]
+    img = cv2.imread(self.samples[idx][0], cv2.IMREAD_GRAYSCALE)
+    if self.transform:
+      img = self.transform(img)
+
+    return img, label
+
+class PRT_WORD(data.Dataset):
+
+  def __init__(self, root='/root/datasets', transform=None):
+
+    self.transform = transform
+    self.root = join(root, 'img_print_single')
+    maybe_download(source_url='https://www.dropbox.com/s/xw8vd3n2jkz1n93/img_print_single.zip?dl=0',filename='img_print_single', target_directory=root, filetype='zip') #'https://www.dropbox.com/s/cbhpy6clfi9a5lz/img_print_100000_clean.zip?dl=0'
+    #yq patch delete unrecognized non-english samples in linux
+    #os.system('find '+ root+' -maxdepth 1 -name "*.jpg" -type f -delete') find ./logs/examples -maxdepth 1 -name "*.log"
+    #if exists(join(root, 'img_print_single')): os.system('mv ' + join(root, 'img_print_single') + ' ' + self.root)
 
     folder_depth = 1
     allfiles = glob(join(self.root, '**/' * folder_depth + '*.jpg'))
-    allfiles = [f for f in allfiles if len(basename(f))-4<=25 and len(basename(f))-4 >=1 and (not '#U' in f) and (not '---' in f)] # screen out non-recognized characters qyk
+    #allfiles = [f for f in allfiles if len(basename(f))-4<=25 and len(basename(f))-4 >=1 and (not '#U' in f) and (not '---' in f)] # screen out non-recognized characters qyk
     labels = [basename(f)[:-4] for f in allfiles]
     self.samples = list(zip(allfiles, labels))
     # makes list of characters

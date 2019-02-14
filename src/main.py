@@ -7,7 +7,7 @@ import cv2
 import editdistance
 import numpy as np
 import PIL
-from datasets import EyDigitStrings, IAM, IRS, PRT
+from datasets import EyDigitStrings, IAM, IRS, PRT,PRT_WORD
 from torch.utils.data import DataLoader, ConcatDataset, random_split#, SequentialSampler #yike: add SequentialSampler
 import torchvision
 import torchvision.transforms as transforms
@@ -135,11 +135,11 @@ def main():
     # instantiate datasets
     iam = IAM(args.dataroot, transform=transform_train)
     eydigits = EyDigitStrings(args.dataroot, transform=transform_train)
-    printed = PRT(args.dataroot,transform=transform_train) # yike todo
-
+    #printed = PRT(args.dataroot,transform=transform_train) # yike todo
+    printed =PRT_WORD(args.dataroot,transform=transform_train)
     irs = IRS(args.dataroot,transform=transform_train) #yike todo
 
-    tst=printed.__getitem__(1)
+    tst=eydigits.__getitem__(1)
     print(type(tst[0]))
     print(tst[0].shape)
     #cv2.imshow('tst',tst[0])
@@ -147,16 +147,19 @@ def main():
     # concatenate datasets
     concat = ConcatDataset([iam, eydigits,irs,printed]) # concatenate the multiple datasets
     #concat= printed
-    #concat=iam
+    #concat=eydigits
     idxTrain = int( .9 * len(concat) )
     trainset, testset = random_split(concat, [idxTrain, len(concat)-idxTrain])
+    print(str(len(trainset)/50))
+    print(str(len(testset)/50))
     trainloader = DataLoader(trainset, batch_size=args.batchsize, shuffle=True, drop_last=True,num_workers=4)
-    testloader = DataLoader(testset, batch_size=args.batchsize, shuffle=False, drop_last=True,num_workers=2) # yike: feel not right
+    validateloader=DataLoader(trainset, batch_size=args.batchsize*8, shuffle=False, drop_last=False,num_workers=2)
+    testloader = DataLoader(testset, batch_size=args.batchsize*8, shuffle=False, drop_last=False,num_workers=2) # yike: feel not right
     #testloader=DataLoader(testset, batch_size=args.batchsize,shuffle=False, num_workers=2) # yike: all test data included, no sampling. validation is not training. , sampler=SequentialSampler
 
     # save characters of model for inference mode
     charlist = list(set.union(set(iam.charList),set(eydigits.charList),set(irs.charList),set(printed.charList)))
-    #charlist=printed.charList
+    #charlist=eydigits.charList
     open(join(args.ckptpath, 'charList.txt'), 'w').write(str().join(charlist))
 
     # # save words contained in dataset into file
@@ -165,7 +168,7 @@ def main():
     # execute training or validation
     if args.train:
       model = Model(args, charlist, decoderType)
-      train(model, trainloader, testloader)
+      train(model, trainloader, validateloader, testloader) #yike added validateloader !!!!!!!!!!
     elif args.validate:
       model = Model(args, charlist, decoderType, mustRestore=True)
       validate(model, testloader)
@@ -176,26 +179,28 @@ def main():
     model = Model(args, open(join(args.ckptpath, 'charList.txt')).read(), decoderType, mustRestore=True)
     infer(model, FilePaths.fnInfer)
 
-def train(model, loader, testloader=None):
+def train(model, loader, validateloader=None,testloader=None):
   "train NN"
   epoch = 0  # number of training epochs since start
   bestCharErrorRate = bestWordErrorRate = float('inf')  # best valdiation character error rate
+  
   while True:
     epoch += 1; print('Epoch:', epoch, ' Training...')
-
+  
     # train
     counter = 0
     step = 0
+    
     for idx, (images, labels) in enumerate(loader):
 
       # convert torchtensor to numpy
       images = images.numpy()
 
       # train batch
-      try:
-        loss = model.trainBatch(images, labels)
-      except:
-        print(labels)
+      #try:
+      loss = model.trainBatch(images, labels)
+      #except:
+      #  print(labels)
       step += 1
 
       # save training status
@@ -211,11 +216,15 @@ def train(model, loader, testloader=None):
       #for debug
       #if idx >2:
       #  break
+    
     # validate
-    charErrorRate, wordAccuracy= validate(model, loader, epoch)
+    if validateloader !=None:
+      charErrorRate, wordAccuracy= validate(model, validateloader, epoch) #yike !!!!!!!!!!!!
+    else: #yike !!!!!!!!!!!!!
+      charErrorRate, wordAccuracy= validate(model, loader, epoch)
     experiment.log_metric('valid/cer', charErrorRate, step)
     experiment.log_metric('valid/wer', 1-wordAccuracy, step)
-
+    
     # test
     if testloader!=None:
       charErrorRate, wordAccuracy= validate(model, testloader, epoch, is_testing=True)
@@ -254,6 +263,8 @@ def validate(model, loader, epoch, is_testing=False):
   yike: convert to troch dataloader, test
   '''
   for idx, (images, labels) in enumerate(loader):
+    if np.mod(idx,10)==0:
+      print(str(idx*50*8))
     images=images.numpy()
     recognized=model.inferBatch(images)
 

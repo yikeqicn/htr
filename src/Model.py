@@ -14,10 +14,10 @@ class DecoderType:
 class Model:
 
   # model constants
-  batchSize = 50
+  #batchSize = 50 #qyk
   # imgSize = (128, 32)
-  imgSize = (192, 48)
-  maxTextLen = 32
+  #imgSize = (192, 48) #qyk
+  maxTextLen = 32 #qyk?
 
   def __init__(self, args, charList, decoderType=DecoderType.BestPath, mustRestore=False):
     "init model: add CNN, RNN and CTC and initialize TF"
@@ -31,7 +31,7 @@ class Model:
 
 
     # Input
-    self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, args.imgsize[0], args.imgsize[1]))
+    self.inputImgs = tf.placeholder(tf.float32, shape=(None, args.imgsize[0], args.imgsize[1]))#self.batchsize yike
     # CNN
     if args.nondensenet:
       cnnOut4d = self.setupCNN(self.inputImgs)
@@ -217,14 +217,14 @@ class Model:
 
   def decoderOutputToText(self, ctcOutput):
     "extract texts from output of CTC decoder"
-
+    bt_size=ctcOutput[1].shape[0] #yike !!!!!!
     # contains string of labels for each batch element
-    encodedLabelStrs = [[] for i in range(self.batchsize)]
-
+    encodedLabelStrs = [[] for i in range(bt_size)] # yike self.batchsize !!!!!!!
+    
     # word beam search: label strings terminated by blank
     if self.decoderType == DecoderType.WordBeamSearch:
       blank = len(self.charList)
-      for b in range(self.batchsize):
+      for b in range(bt_size): # yike self.batchsize !!!!!!!
         for label in ctcOutput[b]:
           if label == blank:
             break
@@ -236,7 +236,7 @@ class Model:
       decoded = ctcOutput[0][0]
 
       # go over all indices and save mapping: batch -> values
-      idxDict = {b: [] for b in range(self.batchsize)}
+      idxDict = {b: [] for b in range(bt_size)} #yike self.batchsize !!!!!
       for (idx, idx2d) in enumerate(decoded.indices):
         label = decoded.values[idx]
         batchElement = idx2d[0]  # index according to [b,t]
@@ -262,10 +262,11 @@ class Model:
   def inferBatch(self, imgs): # modify to compatible to torch. previous def inferBatch(self, batch)
     "feed a batch into the NN to recngnize the texts"
     '''if batch to infer less than args.batchsize, error'''
+    
+    bt_size=len(imgs) # yike !!!!!!!!
 
     decoded = self.sess.run(self.decoder,
-                            {self.inputImgs: imgs, self.seqLen: [Model.maxTextLen] * self.batchsize, self.is_training: False})
-
+                            {self.inputImgs: imgs, self.seqLen: [Model.maxTextLen] * bt_size, self.is_training: False}) #yike self.batchsize!!!!!!!!!
     return self.decoderOutputToText(decoded) # previous batch.imgs
 
   def save(self, epoch):
