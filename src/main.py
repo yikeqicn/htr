@@ -138,6 +138,7 @@ def main():
     #printed = PRT(args.dataroot,transform=transform_train) # yike todo
     printed =PRT_WORD(args.dataroot,transform=transform_train)
     irs = IRS(args.dataroot,transform=transform_train) #yike todo
+    freal=REAL(args.dataroot,transform=transform_train)
 
     tst=eydigits.__getitem__(1)
     print(type(tst[0]))
@@ -145,7 +146,7 @@ def main():
     #cv2.imshow('tst',tst[0])
     #cv2.imwrite('/root/Engagements/test/tst1.jpg', tst[0])
     # concatenate datasets
-    concat = ConcatDataset([iam, eydigits,irs,printed]) # concatenate the multiple datasets
+    concat = ConcatDataset([iam, eydigits,irs,printed,freal]) # concatenate the multiple datasets yike notice!!!!
     #concat= printed
     #concat=eydigits
     idxTrain = int( .9 * len(concat) )
@@ -158,7 +159,7 @@ def main():
     #testloader=DataLoader(testset, batch_size=args.batchsize,shuffle=False, num_workers=2) # yike: all test data included, no sampling. validation is not training. , sampler=SequentialSampler
 
     # save characters of model for inference mode
-    charlist = list(set.union(set(iam.charList),set(eydigits.charList),set(irs.charList),set(printed.charList)))
+    charlist = list(set.union(set(iam.charList),set(eydigits.charList),set(irs.charList),set(printed.charList),set(freal.charList))) # yike notice !!!!
     #charlist=eydigits.charList
     open(join(args.ckptpath, 'charList.txt'), 'w').write(str().join(charlist))
 

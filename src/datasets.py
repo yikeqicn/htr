@@ -214,6 +214,46 @@ class PRT_WORD(data.Dataset):
       img = self.transform(img)
 
     return img, label
+def read_text(path):
+  with open(path,'r') as f:
+    txt=f.read().strip('\n')
+  return txt
+  
+
+class REAL(data.Dataset):
+
+  def __init__(self, root='/root/datasets', transform=None):
+
+    self.transform = transform
+    self.root = join(root, 'text_recognition')
+    maybe_download(source_url='https://www.dropbox.com/s/n1pq94xu9kpur1a/text_recognition.zip?dl=0',filename='text_recognition', target_directory=root, filetype='zip') #'https://www.dropbox.com/s/cbhpy6clfi9a5lz/img_print_100000_clean.zip?dl=0'
+    #yq patch delete unrecognized non-english samples in linux
+    #os.system('find '+ root+' -maxdepth 1 -name "*.jpg" -type f -delete') find ./logs/examples -maxdepth 1 -name "*.log"
+    #if exists(join(root, 'img_print_100000_en')): os.system('mv ' + join(root, 'img_print_100000_en') + ' ' + self.root)
+
+    #folder_depth = 0
+    allfiles = glob(join(self.root, 'imgs/' + '*.jpg'))
+    #allfiles = [f for f in allfiles if len(basename(f))-4<=25 and len(basename(f))-4 >=1 and (not '#U' in f) and (not '---' in f)] # screen out non-recognized characters qyk
+    labels = [read_text(f.replace('imgs','coord').replace('jpg','txt')) for f in allfiles]
+    self.samples = list(zip(allfiles, labels))
+    # makes list of characters
+    chars = set.union(*[set(l) for l in labels])
+    self.charList = sorted(list(chars))
+
+  def __len__(self):
+    return len(self.samples)
+
+  def __str__(self):
+    return 'Printing dataset. Data location: ' + self.root + ', Length: ' + str(len(self))
+
+  def __getitem__(self, idx):
+
+    label = self.samples[idx][1]
+    img = cv2.imread(self.samples[idx][0], cv2.IMREAD_GRAYSCALE)
+    if self.transform:
+      img = self.transform(img)
+
+    return img, label
 
 
 # dataroot = join(home,'datasets')
