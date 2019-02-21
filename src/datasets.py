@@ -124,7 +124,7 @@ class IRS(data.Dataset):
     folder_depth = 2
     allfiles = glob(join(self.root, '**/'*folder_depth+'*.jpg'))
     labels = [basename(f)[:-4] for f in allfiles]
-    print(labels[0])
+    #print(labels[0])
     self.samples = list(zip(allfiles, labels))
     # makes list of characters
     chars = set.union(*[set(l) for l in labels])
@@ -235,7 +235,10 @@ class REAL(data.Dataset):
     allfiles = glob(join(self.root, 'imgs/' + '*.jpg'))
     #allfiles = [f for f in allfiles if len(basename(f))-4<=25 and len(basename(f))-4 >=1 and (not '#U' in f) and (not '---' in f)] # screen out non-recognized characters qyk
     labels = [read_text(f.replace('imgs','coord').replace('jpg','txt')) for f in allfiles]
-    self.samples = list(zip(allfiles, labels))
+    print('real all: '+str(len(labels)))
+    all_samples = list(zip(allfiles, labels))
+    self.samples= [ sample for sample in all_samples if len(sample[1])<30] 
+    print('screened :'+str(len(self.samples)))
     # makes list of characters
     chars = set.union(*[set(l) for l in labels])
     self.charList = sorted(list(chars))

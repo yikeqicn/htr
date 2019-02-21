@@ -7,7 +7,7 @@ import cv2
 import editdistance
 import numpy as np
 import PIL
-from datasets import EyDigitStrings, IAM, IRS, PRT,PRT_WORD
+from datasets import EyDigitStrings, IAM, IRS, PRT,PRT_WORD, REAL
 from torch.utils.data import DataLoader, ConcatDataset, random_split#, SequentialSampler #yike: add SequentialSampler
 import torchvision
 import torchvision.transforms as transforms
@@ -139,14 +139,16 @@ def main():
     printed =PRT_WORD(args.dataroot,transform=transform_train)
     irs = IRS(args.dataroot,transform=transform_train) #yike todo
     freal=REAL(args.dataroot,transform=transform_train)
+    
 
-    tst=eydigits.__getitem__(1)
+    tst=irs.__getitem__(1)
     print(type(tst[0]))
     print(tst[0].shape)
     #cv2.imshow('tst',tst[0])
     #cv2.imwrite('/root/Engagements/test/tst1.jpg', tst[0])
     # concatenate datasets
     concat = ConcatDataset([iam, eydigits,irs,printed,freal]) # concatenate the multiple datasets yike notice!!!!
+    print(len(concat))
     #concat= printed
     #concat=eydigits
     idxTrain = int( .9 * len(concat) )
@@ -168,7 +170,7 @@ def main():
 
     # execute training or validation
     if args.train:
-      model = Model(args, charlist, decoderType)
+      model = Model(args, charlist, decoderType) # yike: pay notice here, add mustRestore if wanna continue with pretrained model !!!!!!!!!
       train(model, trainloader, validateloader, testloader) #yike added validateloader !!!!!!!!!!
     elif args.validate:
       model = Model(args, charlist, decoderType, mustRestore=True)

@@ -1,0 +1,177 @@
+bash: temp2: No such file or directory
+COMET INFO: old comet version (1.0.43) detected. current: 1.0.46 please update your comet lib with command: `pip install --no-cache-dir --upgrade comet_ml`
+COMET INFO: Experiment is live on comet.ml https://www.comet.ml/yikeqicn/htr/3e2067c7306e42ab97b1fe00714fa72d
+
+/root/datasets/iam_handwriting already exists, skipping download
+/root/datasets/htr_assets already exists, skipping download
+/root/datasets/img_print_single already exists, skipping download
+/root/datasets/irs_handwriting already exists, skipping download
+3,831
+Traceback (most recent call last):
+  File "main.py", line 339, in <module>
+    main()
+  File "main.py", line 141, in main
+    freal=REAL(args.dataroot,transform=transform_train)
+NameError: name 'REAL' is not defined
+COMET INFO: ----------------------------
+COMET INFO: Comet.ml Experiment Summary:
+COMET INFO:   Metrics:
+COMET INFO:         sys.gpu.0.free_memory: 17066885120
+COMET INFO:     sys.gpu.0.gpu_utilization: 0
+COMET INFO:        sys.gpu.0.total_memory: 17066885120
+COMET INFO:         sys.gpu.0.used_memory: 0
+COMET INFO:   Other:
+COMET INFO:     Name: dense_128_32_noartifact_beamsearch_5_datasets
+COMET INFO: ----------------------------
+COMET INFO: Uploading stats to Comet before program termination (may take several seconds)
+COMET INFO: Experiment is live on comet.ml https://www.comet.ml/yikeqicn/htr/3e2067c7306e42ab97b1fe00714fa72d
+
+COMET INFO: old comet version (1.0.43) detected. current: 1.0.46 please update your comet lib with command: `pip install --no-cache-dir --upgrade comet_ml`
+COMET ERROR: File could not be uploaded
+COMET INFO: Experiment is live on comet.ml https://www.comet.ml/yikeqicn/htr/18391ed99c9e40bf98e81faa9f15a85d
+
+/root/datasets/iam_handwriting already exists, skipping download
+/root/datasets/htr_assets already exists, skipping download
+/root/datasets/img_print_single already exists, skipping download
+/root/datasets/irs_handwriting already exists, skipping download
+3,831
+/root/datasets/text_recognition already exists, skipping download
+<class 'numpy.ndarray'>
+(128, 32)
+1262535
+22725.62
+2525.08
+Build Densenet4htr model with 5 blocks, 9 bottleneck layers and 9 composite layers each.
+Depth: 96
+Reduction at transition layers: 0.4
+densenet feature extractor graph built in (sec): 9.09028434753418
+Total training params: 0.5M
+shape of cnn output: [None, 32, 1, 178]
+COMET ERROR: Failed to extract parameters from Estimator.init()
+Python: 3.6.6 |Anaconda, Inc.| (default, Jun 28 2018, 17:14:51) 
+[GCC 7.2.0]
+Tensorflow: 1.9.0
+2019-02-21 15:46:25.342929: I tensorflow/core/platform/cpu_feature_guard.cc:141] Your CPU supports instructions that this TensorFlow binary was not compiled to use: SSE4.1 SSE4.2 AVX AVX2 FMA
+2019-02-21 15:46:25.511596: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1392] Found device 0 with properties: 
+name: Tesla P100-PCIE-16GB major: 6 minor: 0 memoryClockRate(GHz): 1.3285
+pciBusID: 3130:00:00.0
+totalMemory: 15.89GiB freeMemory: 15.60GiB
+2019-02-21 15:46:25.511642: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1471] Adding visible gpu devices: 0
+2019-02-21 15:46:25.787441: I tensorflow/core/common_runtime/gpu/gpu_device.cc:952] Device interconnect StreamExecutor with strength 1 edge matrix:
+2019-02-21 15:46:25.787507: I tensorflow/core/common_runtime/gpu/gpu_device.cc:958]      0 
+2019-02-21 15:46:25.787517: I tensorflow/core/common_runtime/gpu/gpu_device.cc:971] 0:   N 
+2019-02-21 15:46:25.787835: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1084] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 15123 MB memory) -> physical GPU (device: 0, name: Tesla P100-PCIE-16GB, pci bus id: 3130:00:00.0, compute capability: 6.0)
+Ran global_variables_initializer
+Epoch: 1  Training...
+TRAIN: Batch: 0.0 Loss: 129.6995
+2019-02-21 15:46:51.931210: W tensorflow/core/framework/op_kernel.cc:1318] OP_REQUIRES failed at ctc_loss_op.cc:166 : Invalid argument: Not enough time for target transition sequence (required: 43, available: 32)13You can turn this error into a warning by using the flag ignore_longer_outputs_than_inputs
+Traceback (most recent call last):
+  File "/opt/conda/lib/python3.6/site-packages/tensorflow/python/client/session.py", line 1322, in _do_call
+    return fn(*args)
+  File "/opt/conda/lib/python3.6/site-packages/tensorflow/python/client/session.py", line 1307, in _run_fn
+    options, feed_dict, fetch_list, target_list, run_metadata)
+  File "/opt/conda/lib/python3.6/site-packages/tensorflow/python/client/session.py", line 1409, in _call_tf_sessionrun
+    run_metadata)
+tensorflow.python.framework.errors_impl.InvalidArgumentError: Not enough time for target transition sequence (required: 43, available: 32)13You can turn this error into a warning by using the flag ignore_longer_outputs_than_inputs
+	 [[Node: CTCLoss = CTCLoss[ctc_merge_repeated=true, ignore_longer_outputs_than_inputs=false, preprocess_collapse_repeated=false, _device="/job:localhost/replica:0/task:0/device:CPU:0"](transpose/_21, _arg_Placeholder_2_0_2, _arg_Placeholder_3_0_3, _arg_Placeholder_5_0_5)]]
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "main.py", line 341, in <module>
+    main()
+  File "main.py", line 174, in main
+    train(model, trainloader, validateloader, testloader) #yike added validateloader !!!!!!!!!!
+  File "main.py", line 204, in train
+    loss = model.trainBatch(images, labels)
+  File "/root/yq/htr/src/Model.py", line 258, in trainBatch
+    self.is_training: True})
+  File "/opt/conda/lib/python3.6/site-packages/tensorflow/python/client/session.py", line 900, in run
+    run_metadata_ptr)
+  File "/opt/conda/lib/python3.6/site-packages/tensorflow/python/client/session.py", line 1135, in _run
+    feed_dict_tensor, options, run_metadata)
+  File "/opt/conda/lib/python3.6/site-packages/tensorflow/python/client/session.py", line 1316, in _do_run
+    run_metadata)
+  File "/opt/conda/lib/python3.6/site-packages/tensorflow/python/client/session.py", line 1335, in _do_call
+    raise type(e)(node_def, op, message)
+tensorflow.python.framework.errors_impl.InvalidArgumentError: Not enough time for target transition sequence (required: 43, available: 32)13You can turn this error into a warning by using the flag ignore_longer_outputs_than_inputs
+	 [[Node: CTCLoss = CTCLoss[ctc_merge_repeated=true, ignore_longer_outputs_than_inputs=false, preprocess_collapse_repeated=false, _device="/job:localhost/replica:0/task:0/device:CPU:0"](transpose/_21, _arg_Placeholder_2_0_2, _arg_Placeholder_3_0_3, _arg_Placeholder_5_0_5)]]
+
+Caused by op 'CTCLoss', defined at:
+  File "main.py", line 341, in <module>
+    main()
+  File "main.py", line 173, in main
+    model = Model(args, charlist, decoderType)
+  File "/root/yq/htr/src/Model.py", line 45, in __init__
+    (self.ctcloss, self.decoder) = self.setupCTC(rnnOut3d)
+  File "/root/yq/htr/src/Model.py", line 131, in setupCTC
+    loss = tf.nn.ctc_loss(labels=self.gtTexts, inputs=ctcIn3dTBC, sequence_length=self.seqLen, ctc_merge_repeated=True)#, ignore_longer_outputs_than_inputs=True) #qyk
+  File "/opt/conda/lib/python3.6/site-packages/tensorflow/python/ops/ctc_ops.py", line 158, in ctc_loss
+    ignore_longer_outputs_than_inputs=ignore_longer_outputs_than_inputs)
+  File "/opt/conda/lib/python3.6/site-packages/tensorflow/python/ops/gen_ctc_ops.py", line 285, in ctc_loss
+    name=name)
+  File "/opt/conda/lib/python3.6/site-packages/tensorflow/python/framework/op_def_library.py", line 787, in _apply_op_helper
+    op_def=op_def)
+  File "/opt/conda/lib/python3.6/site-packages/tensorflow/python/framework/ops.py", line 3414, in create_op
+    op_def=op_def)
+  File "/opt/conda/lib/python3.6/site-packages/tensorflow/python/framework/ops.py", line 1740, in __init__
+    self._traceback = self._graph._extract_stack()  # pylint: disable=protected-access
+
+InvalidArgumentError (see above for traceback): Not enough time for target transition sequence (required: 43, available: 32)13You can turn this error into a warning by using the flag ignore_longer_outputs_than_inputs
+	 [[Node: CTCLoss = CTCLoss[ctc_merge_repeated=true, ignore_longer_outputs_than_inputs=false, preprocess_collapse_repeated=false, _device="/job:localhost/replica:0/task:0/device:CPU:0"](transpose/_21, _arg_Placeholder_2_0_2, _arg_Placeholder_3_0_3, _arg_Placeholder_5_0_5)]]
+
+COMET INFO: ----------------------------
+COMET INFO: Comet.ml Experiment Summary:
+COMET INFO:   Metrics:
+COMET INFO:         sys.gpu.0.free_memory: 17066885120
+COMET INFO:     sys.gpu.0.gpu_utilization: 0
+COMET INFO:        sys.gpu.0.total_memory: 17066885120
+COMET INFO:         sys.gpu.0.used_memory: 0
+COMET INFO:                    train/loss: 129.6995
+COMET INFO:   Other:
+COMET INFO:     Name: dense_128_32_noartifact_beamsearch_5_datasets
+COMET INFO:   Uploads:
+COMET INFO:      assets: 0
+COMET INFO:     figures: 0
+COMET INFO:      images: 5
+COMET INFO: ----------------------------
+COMET INFO: Uploading stats to Comet before program termination (may take several seconds)
+COMET INFO: Experiment is live on comet.ml https://www.comet.ml/yikeqicn/htr/18391ed99c9e40bf98e81faa9f15a85d
+
+COMET INFO: old comet version (1.0.43) detected. current: 1.0.46 please update your comet lib with command: `pip install --no-cache-dir --upgrade comet_ml`
+COMET INFO: Experiment is live on comet.ml https://www.comet.ml/yikeqicn/htr/1a34a0a1cd844284bbd65846e7c2323e
+
+/root/datasets/iam_handwriting already exists, skipping download
+/root/datasets/htr_assets already exists, skipping download
+/root/datasets/img_print_single already exists, skipping download
+/root/datasets/irs_handwriting already exists, skipping download
+/root/datasets/text_recognition already exists, skipping download
+real all: 815827
+screened :815502
+<class 'numpy.ndarray'>
+(128, 32)
+1262210
+22719.78
+2524.42
+Build Densenet4htr model with 5 blocks, 9 bottleneck layers and 9 composite layers each.
+Depth: 96
+Reduction at transition layers: 0.4
+densenet feature extractor graph built in (sec): 8.738435983657837
+Total training params: 0.5M
+shape of cnn output: [None, 32, 1, 178]
+COMET ERROR: Failed to extract parameters from Estimator.init()
+Python: 3.6.6 |Anaconda, Inc.| (default, Jun 28 2018, 17:14:51) 
+[GCC 7.2.0]
+Tensorflow: 1.9.0
+2019-02-21 16:16:04.465863: I tensorflow/core/platform/cpu_feature_guard.cc:141] Your CPU supports instructions that this TensorFlow binary was not compiled to use: SSE4.1 SSE4.2 AVX AVX2 FMA
+2019-02-21 16:16:04.636495: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1392] Found device 0 with properties: 
+name: Tesla P100-PCIE-16GB major: 6 minor: 0 memoryClockRate(GHz): 1.3285
+pciBusID: 3130:00:00.0
+totalMemory: 15.89GiB freeMemory: 15.60GiB
+2019-02-21 16:16:04.636542: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1471] Adding visible gpu devices: 0
+2019-02-21 16:16:04.913104: I tensorflow/core/common_runtime/gpu/gpu_device.cc:952] Device interconnect StreamExecutor with strength 1 edge matrix:
+2019-02-21 16:16:04.913173: I tensorflow/core/common_runtime/gpu/gpu_device.cc:958]      0 
+2019-02-21 16:16:04.913183: I tensorflow/core/common_runtime/gpu/gpu_device.cc:971] 0:   N 
+2019-02-21 16:16:04.913484: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1084] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 15123 MB memory) -> physical GPU (device: 0, name: Tesla P100-PCIE-16GB, pci bus id: 3130:00:00.0, compute capability: 6.0)
+Ran global_variables_initializer
+Epoch: 1  Training...

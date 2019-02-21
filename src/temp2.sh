@@ -1,0 +1,1 @@
+python main.py -train -batchsize=50 -rnnsteps=32 -noartifact -beamsearch -name=dense_128_32_noartifact_beamsearch_5_datasets
