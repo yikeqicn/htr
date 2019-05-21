@@ -132,6 +132,31 @@ def center_pad(img, pad):
   '''center crop the image by defining the amoiunt of negative padding to shrink'''
   return img[pad:-pad, pad:-pad]
 
+def add_artifacts(img,args): #yike: to be assessed
+  if not args.noartifact:
+    #cv2.imwrite('/root/Engagements/test/tst1_bf.jpg', img)
+    img= horizontal_stretch(img, minFactor=.5, maxFactor=1.5)
+    img = target_aspect_pad(img, targetRatio=args.imgsize[1] / args.imgsize[0])
+    img = keep_aspect_pad(img, maxFactor=1.1)
+
+    img = cv2.resize(img, tuple(args.imgsize), interpolation=cv2.INTER_CUBIC)
+
+    if rand() < .70:
+      img = merge_patch_box_random(img, centroid_std=.03)
+    else:
+      img = merge_patch_horiz_random(img, centroid_std=.05)
+    #cv2.imwrite('/root/Engagements/test/tst1_aft.jpg', img)
+  return img
+
+def img_normalize(img):
+  (m, s) = cv2.meanStdDev(img)
+  m = m[0][0]
+  s = s[0][0]
+  img = img - m
+  img = img / s if s > 0 else img
+
+
+
 
 if __name__ == '__main__':
 

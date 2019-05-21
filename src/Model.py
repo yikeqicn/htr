@@ -14,25 +14,24 @@ class DecoderType:
 class Model:
 
   # model constants
-  batchSize = 50
+  #batchSize = 50 #qyk
   # imgSize = (128, 32)
-  imgSize = (192, 48)
-  maxTextLen = 32
+  #imgSize = (192, 48) #qyk
+  maxTextLen = 32 #qyk?
 
-  def __init__(self, args, charList, decoderType=DecoderType.BestPath, mustRestore=False, FilePaths=None):
+  def __init__(self, args, charList, decoderType=DecoderType.BestPath, mustRestore=False):
     "init model: add CNN, RNN and CTC and initialize TF"
     self.charList = charList
     self.decoderType = decoderType
     self.mustRestore = mustRestore
-    self.FilePaths = FilePaths
+    # self.FilePaths = FilePaths
     self.batchsize = args.batchsize
     self.lrInit = args.lrInit
     self.args = args
 
 
     # Input
-    self.inputImgs = tf.placeholder(tf.float32, shape=(self.batchsize, args.imgsize[0], args.imgsize[1]))
-
+    self.inputImgs = tf.placeholder(tf.float32, shape=(None, args.imgsize[0], args.imgsize[1]))#self.batchsize yike
     # CNN
     if args.nondensenet:
       cnnOut4d = self.setupCNN(self.inputImgs)
@@ -128,7 +127,8 @@ class Model:
                                    tf.placeholder(tf.int64, [2]))
     # calc loss for batch
     self.seqLen = tf.placeholder(tf.int32, [None])
-    loss = tf.nn.ctc_loss(labels=self.gtTexts, inputs=ctcIn3dTBC, sequence_length=self.seqLen, ctc_merge_repeated=True)
+
+    loss = tf.nn.ctc_loss(labels=self.gtTexts, inputs=ctcIn3dTBC, sequence_length=self.seqLen, ctc_merge_repeated=True)#, ignore_longer_outputs_than_inputs=True) #qyk
 
     # decoder: either best path decoding or beam search decoding
     if self.decoderType == DecoderType.BestPath:
@@ -170,9 +170,9 @@ class Model:
     saver = tf.train.Saver(max_to_keep=1)  # saver saves model to file
 
     # Restore from saved model in current checkpoint directory
-    latestSnapshot = tf.train.latest_checkpoint(self.FilePaths.fnCkptpath)  # is there a saved model?
+    latestSnapshot = tf.train.latest_checkpoint(self.args.ckptpath)  # is there a saved model?
     if self.mustRestore and not latestSnapshot: # if model must be restored (for inference), there must be a snapshot
-      raise Exception('No saved model found in: ' + self.FilePaths.fnCkptpath)
+      raise Exception('No saved model found in: ' + self.args.ckptpath)
 
     if latestSnapshot: # load saved model if available
       saver.restore(sess, latestSnapshot)
@@ -184,14 +184,14 @@ class Model:
     # initialize params from other model (transfer learning)
     if self.args.transfer:
 
-      utils.maybe_download(source_url=self.FilePaths.urlTransferFrom,
-                           filename=join(self.FilePaths.fnCkptpath, 'transferFrom'),
+      utils.maybe_download(source_url=self.args.urlTransferFrom,
+                           filename=join(self.args.ckptpath, 'transferFrom'),
                            target_directory=None,
                            filetype='folder',
                            force=True)
       saverTransfer = tf.train.Saver(tf.trainable_variables()[:-1])  # load all variables except from logit (classification) layer
-      saverTransfer.restore(sess, glob(join(self.FilePaths.fnCkptpath, 'transferFrom', 'model*'))[0].split('.')[0])
-      print('Loaded variable values (except logit layer) from ' + self.FilePaths.urlTransferFrom)
+      saverTransfer.restore(sess, glob(join(self.args.ckptpath, 'transferFrom', 'model*'))[0].split('.')[0])
+      print('Loaded variable values (except logit layer) from ' + self.args.urlTransferFrom)
 
     return (sess, saver)
 
@@ -217,14 +217,14 @@ class Model:
 
   def decoderOutputToText(self, ctcOutput):
     "extract texts from output of CTC decoder"
-
+    bt_size=ctcOutput[1].shape[0] #yike !!!!!!
     # contains string of labels for each batch element
-    encodedLabelStrs = [[] for i in range(self.batchsize)]
-
+    encodedLabelStrs = [[] for i in range(bt_size)] # yike self.batchsize !!!!!!!
+    
     # word beam search: label strings terminated by blank
     if self.decoderType == DecoderType.WordBeamSearch:
       blank = len(self.charList)
-      for b in range(self.batchsize):
+      for b in range(bt_size): # yike self.batchsize !!!!!!!
         for label in ctcOutput[b]:
           if label == blank:
             break
@@ -236,7 +236,7 @@ class Model:
       decoded = ctcOutput[0][0]
 
       # go over all indices and save mapping: batch -> values
-      idxDict = {b: [] for b in range(self.batchsize)}
+      idxDict = {b: [] for b in range(bt_size)} #yike self.batchsize !!!!!
       for (idx, idx2d) in enumerate(decoded.indices):
         label = decoded.values[idx]
         batchElement = idx2d[0]  # index according to [b,t]
@@ -245,25 +245,30 @@ class Model:
     # map labels to chars for all batch elements
     return [str().join([self.charList[c] for c in labelStr]) for labelStr in encodedLabelStrs]
 
-  def trainBatch(self, batch):
+  def trainBatch(self, images, labels):
     "feed a batch into the NN to train it"
-    sparse = self.toSparse(batch.gtTexts)
+    sparse = self.toSparse(labels)
     lrnrate = self.lrInit if self.batchesTrained < self.args.lrDrop1 else (
       self.lrInit*1e-1 if self.batchesTrained < self.args.lrDrop2 else self.lrInit*1e-2)  # decay learning rate
-    (_, lossVal) = self.sess.run([self.optimizer, self.loss], {self.inputImgs: batch.imgs,
-                                                                  self.gtTexts: sparse,
-                                                                  self.seqLen: [Model.maxTextLen] * self.batchsize,
-                                                                  self.learningRate: lrnrate,
-                                                                  self.is_training: True})
+    (_, lossVal) = self.sess.run([self.optimizer, self.loss],
+                                  {self.inputImgs: images,
+                                   self.gtTexts: sparse,
+                                   self.seqLen: [Model.maxTextLen] * self.batchsize,
+                                   self.learningRate: lrnrate,
+                                   self.is_training: True})
     self.batchesTrained += 1
     return lossVal
 
-  def inferBatch(self, batch):
+  def inferBatch(self, imgs): # modify to compatible to torch. previous def inferBatch(self, batch)
     "feed a batch into the NN to recngnize the texts"
+    '''if batch to infer less than args.batchsize, error'''
+    
+    bt_size=len(imgs) # yike !!!!!!!!
+
     decoded = self.sess.run(self.decoder,
-                            {self.inputImgs: batch.imgs, self.seqLen: [Model.maxTextLen] * self.batchsize, self.is_training: False})
-    return self.decoderOutputToText(decoded)
+                            {self.inputImgs: imgs, self.seqLen: [Model.maxTextLen] * bt_size, self.is_training: False}) #yike self.batchsize!!!!!!!!!
+    return self.decoderOutputToText(decoded) # previous batch.imgs
 
   def save(self, epoch):
     "save model to file"
-    self.saver.save(self.sess, join(self.FilePaths.fnCkptpath, 'model'), global_step=epoch)
+    self.saver.save(self.sess, join(self.args.ckptpath, 'model'), global_step=epoch)
